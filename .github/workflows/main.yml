@@ -1,32 +1,46 @@
-# This is a basic workflow to help you get started with Actions
-
 name: CI
 
-# Controls when the action will run. 
 on:
-  # Triggers the workflow on push or pull request events but only for the main branch
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
 
-  # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
-    runs-on: ubuntu-latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
+  lint:
+    runs-on: ubuntu-20.04
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+      - name: Run image
+        uses: abatilo/actions-poetry@v2.1.0
+        with:
+          poetry-version: "1.1.4"
 
-      - name: Poetry Install
-        uses: knowsuchagency/poetry-install@v2
+      - name: PyTest
+        run: poetry run flake8
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [3.8, 3.9]
+        os: [ubuntu-20.04, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Run image
+        uses: abatilo/actions-poetry@v2.1.0
+        with:
+          poetry-version: "1.1.4"
 
       - name: PyTest
         run: poetry run pytest --cov=egauge_async test/
