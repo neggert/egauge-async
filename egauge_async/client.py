@@ -83,7 +83,7 @@ class EgaugeClient(object):
                 raise EgaugeParsingException(
                     'Could not find attribute "t" for element "r"'
                 )
-            
+
             value_elem = r.find("v")
             if value_elem is None:
                 raise EgaugeParsingException(
@@ -101,7 +101,7 @@ class EgaugeClient(object):
                 if rate_str is None:
                     raise EgaugeParsingException('Element "i" is empty')
                 rate = float(rate_str)
-            
+
             register_data[name] = RegisterData(register_type, value, rate)
         return DataRow(timestamp=ts, registers=register_data)
 
