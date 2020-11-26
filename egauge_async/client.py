@@ -29,10 +29,9 @@ class EgaugeClient(object):
         self, uri: str, username: Optional[str] = None, password: Optional[str] = None
     ):
         self.uri = uri
+        auth: Optional[httpx.DigestAuth] = None
         if username is not None and password is not None:
             auth = httpx.DigestAuth(username=username, password=password)
-        else:
-            auth = None
 
         # turn off SSL verification. eGauges use self-signed certs
         self.client = httpx.AsyncClient(auth=auth, verify=False)
@@ -62,7 +61,12 @@ class EgaugeClient(object):
         """Parse XML response from the instantaneous endpoint"""
         logger.debug(f"Parsing instantaneous XML data:\n{xml}")
         root = ElementTree.fromstring(xml)
-        ts_str = root.find("ts").text
+        ts_elem = root.find("ts")
+        if ts_elem is None:
+            raise EgaugeParsingException("Could not find element 'ts'")
+        ts_str = ts_elem.text
+        if ts_str is None:
+            raise EgaugeParsingException("Empty timestamp element")
         ts = datetime.fromtimestamp(int(ts_str))
         register_data: Dict[str, RegisterData] = {}
         rows = root.findall("r")
@@ -79,12 +83,25 @@ class EgaugeClient(object):
                 raise EgaugeParsingException(
                     'Could not find attribute "t" for element "r"'
                 )
-            value = int(r.find("v").text)
-            rate_node = r.find("i")
-            if rate_node is not None:
-                rate: Optional[float] = float(rate_node.text)
-            else:
-                rate = None
+
+            value_elem = r.find("v")
+            if value_elem is None:
+                raise EgaugeParsingException(
+                    'Could not find element "v" inside element "r"'
+                )
+            value_str = value_elem.text
+            if value_str is None:
+                raise EgaugeParsingException('Element "v" is empty')
+            value = int(value_str)
+
+            rate: Optional[float] = None
+            rate_elem = r.find("i")
+            if rate_elem is not None:
+                rate_str = rate_elem.text
+                if rate_str is None:
+                    raise EgaugeParsingException('Element "i" is empty')
+                rate = float(rate_str)
+
             register_data[name] = RegisterData(register_type, value, rate)
         return DataRow(timestamp=ts, registers=register_data)
 
@@ -95,7 +112,7 @@ class EgaugeClient(object):
         interval: Optional[TimeInterval] = None,
         skip_rows: Optional[int] = None,
         timestamps: Optional[Iterable[datetime]] = None,
-        max_rows: Optional[int] = None
+        max_rows: Optional[int] = None,
     ) -> List[DataRow]:
         """Get stored historical data
 
@@ -158,8 +175,8 @@ class EgaugeClient(object):
         logger.debug(f"Parsing historical XML data: {xml}")
         root = ElementTree.fromstring(xml)
         rows: List[DataRow] = []
-        col_names = []
-        col_types = []
+        col_names: List[str] = []
+        col_types: List[str] = []
         for data_element in root.findall("data"):
             try:
                 start_ts = datetime.fromtimestamp(
@@ -178,7 +195,10 @@ class EgaugeClient(object):
 
             if len(col_names) == 0:
                 for cname in data_element.findall("cname"):
-                    col_names.append(cname.text)
+                    cname_str = cname.text
+                    if cname_str is None:
+                        raise EgaugeParsingException('"cname" element is empty')
+                    col_names.append(cname_str)
                     try:
                         register_type = cname.attrib["t"]
                     except KeyError:
@@ -194,7 +214,10 @@ class EgaugeClient(object):
                 ts = start_ts - row_num * delta
                 registers = {}
                 for i, col in enumerate(row.findall("c")):
-                    registers[col_names[i]] = RegisterData(col_types[i], int(col.text))
+                    col_str = col.text
+                    if col_str is None:
+                        raise EgaugeParsingException('"c" element is empty')
+                    registers[col_names[i]] = RegisterData(col_types[i], int(col_str))
                 rows.append(DataRow(timestamp=ts, registers=registers))
 
         return rows
@@ -237,7 +260,9 @@ class EgaugeClient(object):
         .. [XML API documentation] https://kb.egauge.net/books/egauge-meter-communication/page/xml-api
         """
         if not hasattr(self, "_hist_registers"):
-            data = await self.get_historical_data(max_rows=1, interval=TimeInterval.SECOND)
+            data = await self.get_historical_data(
+                max_rows=1, interval=TimeInterval.SECOND
+            )
             self._hist_registers = {
                 k: v.register_type_code for k, v in data[0].registers.items()
             }
@@ -250,7 +275,7 @@ class EgaugeClient(object):
             dict of register names to rates
         """
         data = await self.get_instantaneous_data()
-        return {k: r.rate for k, r in data.registers.items()}
+        return {k: r.rate for k, r in data.registers.items() if r.rate is not None}
 
     async def get_interval_changes(
         self,
