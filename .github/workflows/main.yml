@@ -16,12 +16,13 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: 3.9
-      - name: Run image
+      - name: Install Poetry
         uses: abatilo/actions-poetry@v2.1.0
         with:
           poetry-version: "1.1.4"
-
-      - name: PyTest
+      - name: Install Package
+        run: poetry install
+      - name: Flake8
         run: poetry run flake8
 
   test:
@@ -37,10 +38,11 @@ jobs:
       - uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Run image
+      - name: Install Poetry
         uses: abatilo/actions-poetry@v2.1.0
         with:
           poetry-version: "1.1.4"
-
+      - name: Install Package
+        run: poetry install
       - name: PyTest
         run: poetry run pytest --cov=egauge_async test/
