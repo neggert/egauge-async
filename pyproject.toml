@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "egauge-async"
-version = "0.1.0"
+version = "0.0.0"  # populated using `poetry version` on release
 description = "Async client for eGauge energy monitor (https://www.egauge.net)"
 license = "GPL-3.0-only"
 authors = ["Nic Eggert <nic@eggert.io>"]
