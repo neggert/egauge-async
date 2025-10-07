@@ -13,23 +13,12 @@ jobs:
         with:
           python-version: "3.11"
       - uses: astral-sh/uv-action@v2
-      - name: Prepare release metadata
-        env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: |
-          export VERSION="${RELEASE_TAG#v}"
-          python - <<'PY'
-from pathlib import Path
-import os
-
-version = os.environ["VERSION"]
-path = Path("pyproject.toml")
-text = path.read_text()
-path.write_text(text.replace('version = "0.0.0"', f'version = "{version}"', 1))
-PY
       - name: Build artifacts
+        env:
+          UV_DYNAMIC_VERSIONING: 1
         run: uv build
       - name: Publish to PyPI
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+          UV_DYNAMIC_VERSIONING: 1
         run: uv publish

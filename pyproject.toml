@@ -1,10 +1,13 @@
 [build-system]
-requires = ["setuptools>=64"]
-build-backend = "setuptools.build_meta"
+requires = [
+    "hatchling>=1.18",
+    "uv-dynamic-versioning[plugin]>=0.4",
+]
+build-backend = "hatchling.build"
 
 [project]
 name = "egauge-async"
-version = "0.0.0"  # populated during release
+dynamic = ["version"]
 description = "Async client for eGauge energy monitor (https://www.egauge.net)"
 readme = "README.md"
 requires-python = ">=3.7"
@@ -38,4 +41,7 @@ select = ["E", "F", "I", "UP", "B", "ASYNC"]
 [tool.pyright]
 typeCheckingMode = "standard"
 pythonVersion = "3.7"
+
+[tool.uv-dynamic-versioning]
+enable = true
 
