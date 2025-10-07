@@ -65,8 +65,8 @@ uv sync --all-extras --dev
 Common development commands can then be run with `uv`:
 
 - Run the test suite: `uv run pytest`
-- Lint and format the codebase with Ruff: `uv run ruff check .` and `uv run ruff format .`
-- Format Python files with Black: `uv run black .`
+- Lint the codebase with Ruff: `uv run ruff check .`
+- Format Python files with Ruff: `uv run ruff format .`
 - Perform static type checking with Pyright: `uv run pyright`
 
 ## Disclaimer
