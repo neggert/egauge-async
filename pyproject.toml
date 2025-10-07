@@ -45,3 +45,6 @@ pythonVersion = "3.7"
 [tool.uv-dynamic-versioning]
 enable = true
 
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
