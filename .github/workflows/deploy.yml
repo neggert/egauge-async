@@ -6,24 +6,30 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: 3.9
-      - name: Install Poetry
-        uses: abatilo/actions-poetry@v2.1.0
-        with:
-          poetry-version: "1.1.4"
-      - name: Setup environment
-        run: |
-          poetry env use python3.9
-          poetry version ${{ github.event.release.tag_name }}
-          poetry install
-      - name: Build and Publish
+          python-version: "3.11"
+      - uses: astral-sh/uv-action@v2
+      - name: Prepare release metadata
         env:
-          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
         run: |
-          poetry build
-          poetry publish
+          export VERSION="${RELEASE_TAG#v}"
+          python - <<'PY'
+from pathlib import Path
+import os
+
+version = os.environ["VERSION"]
+path = Path("pyproject.toml")
+text = path.read_text()
+path.write_text(text.replace('version = "0.0.0"', f'version = "{version}"', 1))
+PY
+      - name: Build artifacts
+        run: uv build
+      - name: Publish to PyPI
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_TOKEN }}
+        run: uv publish

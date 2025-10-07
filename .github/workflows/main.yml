@@ -10,45 +10,37 @@ on:
 
 jobs:
   lint:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: 3.9
-      - name: Install Poetry
-        uses: abatilo/actions-poetry@v2.1.0
-        with:
-          poetry-version: "1.1.4"
-      - name: Setup environment
-        run: |
-          poetry env use python3.9
-          poetry install
-      - name: Flake8
-        run: poetry run flake8
-      - name: MyPy
-        run: poetry run mypy
+          python-version: "3.11"
+      - uses: astral-sh/uv-action@v2
+      - name: Sync dependencies
+        run: uv sync
+      - name: Ruff lint
+        run: uv run ruff check .
+      - name: Ruff format check
+        run: uv run ruff format --check .
+      - name: Pyright
+        run: uv run pyright
 
   test:
     strategy:
       fail-fast: false
       matrix:
-        python-version: [3.7, 3.8, 3.9]
-        os: [ubuntu-20.04, macos-latest, windows-latest]
+        python-version: ["3.7", "3.8", "3.9"]
+        os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install Poetry
-        uses: abatilo/actions-poetry@v2.1.0
-        with:
-          poetry-version: "1.1.4"
-      - name: Setup environment
-        run: |
-          poetry env use python${{ matrix.python-version }}
-          poetry install
+      - uses: astral-sh/uv-action@v2
+      - name: Sync dependencies
+        run: uv sync
       - name: PyTest
-        run: poetry run pytest --cov=egauge_async test/
+        run: uv run pytest --cov=egauge_async test/
