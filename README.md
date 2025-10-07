@@ -52,6 +52,23 @@ asyncio.run(get_historical_registers())
 This package uses the publically-documented [XML API](https://kb.egauge.net/books/egauge-meter-communication/page/xml-api)
 provided by eGauge Systems.
 
+## Development
+
+This project now relies on [uv](https://github.com/astral-sh/uv) for dependency management
+and task execution. After installing `uv`, create a virtual environment and install the
+project dependencies with
+
+```bash
+uv sync --all-extras --dev
+```
+
+Common development commands can then be run with `uv`:
+
+- Run the test suite: `uv run pytest`
+- Lint and format the codebase with Ruff: `uv run ruff check .` and `uv run ruff format .`
+- Format Python files with Black: `uv run black .`
+- Perform static type checking with Pyright: `uv run pyright`
+
 ## Disclaimer
 
 This project is not affiliated with, endorsed by, or sponsored by eGauge Systems LLC. Any
