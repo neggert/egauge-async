@@ -54,9 +54,9 @@ provided by eGauge Systems.
 
 ## Development
 
-This project now relies on [uv](https://github.com/astral-sh/uv) for dependency management
-and task execution. After installing `uv`, create a virtual environment and install the
-project dependencies with
+This project targets Python 3.10+ and relies on [uv](https://github.com/astral-sh/uv) for
+dependency management and task execution. After installing `uv`, create a virtual
+environment and install the project dependencies with
 
 ```bash
 uv sync --all-extras --dev

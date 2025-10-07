@@ -10,7 +10,7 @@ name = "egauge-async"
 dynamic = ["version"]
 description = "Async client for eGauge energy monitor (https://www.egauge.net)"
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.10"
 license = {text = "GPL-3.0-only"}
 authors = [{name = "Nic Eggert", email = "nic@eggert.io"}]
 dependencies = [
@@ -32,7 +32,7 @@ dev-dependencies = [
 ]
 
 [tool.ruff]
-target-version = "py37"
+target-version = "py310"
 line-length = 88
 
 [tool.ruff.lint]
@@ -40,7 +40,7 @@ select = ["E", "F", "I", "UP", "B", "ASYNC"]
 
 [tool.pyright]
 typeCheckingMode = "standard"
-pythonVersion = "3.7"
+pythonVersion = "3.10"
 
 [tool.uv-dynamic-versioning]
 enable = true
