@@ -59,7 +59,7 @@ dependency management and task execution. After installing `uv`, create a virtua
 environment and install the project dependencies with
 
 ```bash
-uv sync --all-extras --dev
+uv sync --all-extras --group dev
 ```
 
 Common development commands can then be run with `uv`:
