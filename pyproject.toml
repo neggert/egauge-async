@@ -3,7 +3,7 @@ name = "egauge-async"
 version = "0.0.0"
 description = "Async client for eGauge energy monitor (https://www.egauge.net)"
 authors = [{ name = "Nic Eggert", email = "nic@eggert.io" }]
-requires-python = "~=3.7"
+requires-python = ">=3.11"
 readme = "README.md"
 license = "GPL-3.0-only"
 dependencies = ["httpx>=0.16.0"]
