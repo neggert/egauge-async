@@ -1,26 +1,28 @@
-[tool.poetry]
+[project]
 name = "egauge-async"
-version = "0.0.0"  # populated using `poetry version` on release
+version = "0.0.0"
 description = "Async client for eGauge energy monitor (https://www.egauge.net)"
-license = "GPL-3.0-only"
-authors = ["Nic Eggert <nic@eggert.io>"]
+authors = [{ name = "Nic Eggert", email = "nic@eggert.io" }]
+requires-python = "~=3.7"
 readme = "README.md"
-homepage = "https://github.com/neggert/egauge-async"
+license = "GPL-3.0-only"
+dependencies = ["httpx>=0.16.0"]
 
-[tool.poetry.dependencies]
-python = "^3.7"
-httpx = ">=0.16.0"
+[project.urls]
+Homepage = "https://github.com/neggert/egauge-async"
 
-[tool.poetry.dev-dependencies]
-mypy = "^0.790"
-pytest = "^6.1.1"
-black = "^20.8b1"
-flake8 = "^3.8.4"
-rope = "^0.18.0"
-pytest-asyncio = "^0.14.0"
-pytest-cov = "^2.10.1"
-pytest-mock = "^3.3.1"
+[dependency-groups]
+dev = [
+    "mypy>=0.790,<0.791",
+    "pytest>=6.1.1,<7",
+    "black~=20.8b1",
+    "flake8>=3.8.4,<4",
+    "rope>=0.18.0,<0.19",
+    "pytest-asyncio>=0.14.0,<0.15",
+    "pytest-cov>=2.10.1,<3",
+    "pytest-mock>=3.3.1,<4",
+]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
