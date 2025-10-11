@@ -28,12 +28,14 @@ class DataRow(object):
         timestamp: the time at which the reading was recorded
         registers: dictionary mapping register name to the corresponding data
     """
+
     timestamp: datetime
     registers: Dict[str, RegisterData]
 
 
 class TimeInterval(Enum):
     """Time intervals supported by the Egauge API"""
+
     SECOND = 1
     MINUTE = 2
     HOUR = 3
