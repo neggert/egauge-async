@@ -1,6 +1,6 @@
 [project]
 name = "egauge-async"
-version = "0.0.0"
+dynamic = ["version"]
 description = "Async client for eGauge energy monitor (https://www.egauge.net)"
 authors = [{ name = "Nic Eggert", email = "nic@eggert.io" }]
 requires-python = ">=3.11"
@@ -23,8 +23,14 @@ dev = [
 ]
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "uv-dynamic-versioning"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.uv-dynamic-versioning]
+fallback-version = "0.0.0"
 
 [tool.pyright]
 include = ["egauge_async"]
