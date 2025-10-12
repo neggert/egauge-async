@@ -25,8 +25,6 @@ def create_query_string(params: Iterable[QueryParam]) -> str:
         query_string += sep
         if isinstance(p, tuple) and len(p) == 2:
             query_string += f"{p[0]}={p[1]}"
-        elif isinstance(p, str):
-            query_string += p
         else:
-            raise ValueError(f"Unsupported query parameter {p}")
+            query_string += p
     return query_string

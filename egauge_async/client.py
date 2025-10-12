@@ -51,7 +51,7 @@ class EgaugeClient(object):
         """
         url = self.uri + "/cgi-bin/egauge"
         params: List[QueryParam] = ["inst", "tot"]
-        response = await self.client.get(url + create_query_string(params))
+        response = await self.client.get(url + create_query_string(params))  # pyright: ignore[reportUnknownMemberType]
         if response.status_code != 200:
             raise EgaugeHTTPErrorCode(response.status_code)
         return self._parse_instantaneous_data(response.text)
@@ -164,7 +164,7 @@ class EgaugeClient(object):
             params.append(("T", ts))
         if max_rows is not None:
             params.append(("n", str(max_rows)))
-        response = await self.client.get(url + create_query_string(params))
+        response = await self.client.get(url + create_query_string(params))  # pyright: ignore[reportUnknownMemberType]
         if response.status_code != 200:
             raise EgaugeHTTPErrorCode(response.status_code)
         return self._parse_historical_data(response.text)
@@ -212,7 +212,7 @@ class EgaugeClient(object):
 
             for row_num, row in enumerate(data_element.findall("r")):
                 ts = start_ts - row_num * delta
-                registers = {}
+                registers: dict[str, RegisterData] = {}
                 for i, col in enumerate(row.findall("c")):
                     col_str = col.text
                     if col_str is None:
@@ -318,7 +318,7 @@ class EgaugeClient(object):
             skip_rows=interval_multiplier - 1,
         )
         data.sort(key=lambda d: d.timestamp)
-        output = []
+        output: list[dict[str, Any]] = []
         for i in range(len(data) - 1):
             start = data[i].timestamp
             end = data[i + 1].timestamp

@@ -1,5 +1,6 @@
 class EgaugeException(Exception):
     """Base exception class for Egauge errors"""
+
     pass
 
 
