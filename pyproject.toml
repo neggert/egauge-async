@@ -6,13 +6,16 @@ authors = [{ name = "Nic Eggert", email = "nic@eggert.io" }]
 requires-python = ">=3.11"
 readme = "README.md"
 license = "GPL-3.0-only"
-dependencies = ["httpx>=0.16.0"]
+dependencies = [
+    "httpx>=0.16.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/neggert/egauge-async"
 
 [dependency-groups]
 dev = [
+    "pyright>=1.1.406",
     "pytest-asyncio>=0.14.0,<0.15",
     "pytest-cov>=2.10.1,<3",
     "pytest-mock>=3.3.1,<4",
@@ -22,3 +25,11 @@ dev = [
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.pyright]
+include = ["egauge_async"]
+strict = ["egauge_async"]
+
+# files = "egauge_async"
+# warn_return_any = true
+# warn_unused_configs = true
