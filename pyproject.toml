@@ -28,8 +28,4 @@ build-backend = "hatchling.build"
 
 [tool.pyright]
 include = ["egauge_async"]
-strict = ["egauge_async"]
-
-# files = "egauge_async"
-# warn_return_any = true
-# warn_unused_configs = true
+typeCheckingMode = "strict"
