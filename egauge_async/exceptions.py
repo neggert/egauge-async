@@ -18,3 +18,15 @@ class EgaugeHTTPErrorCode(EgaugeException):
 
 class EgaugeParsingException(EgaugeException):
     pass
+
+
+class EgaugeAuthenticationError(EgaugeException):
+    """Exception raised when authentication fails"""
+
+    pass
+
+
+class EgaugeTokenExpiredError(EgaugeException):
+    """Exception raised when a JWT token has expired"""
+
+    pass
