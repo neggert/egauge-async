@@ -1,11 +1,31 @@
+import base64
 import hashlib
+import json
+import time
 
 import pytest
 
 from egauge_async.exceptions import EgaugeAuthenticationError
-from egauge_async.json.auth import JwtAuthManager
+from egauge_async.json.auth import JwtAuthManager, _TokenState
 from egauge_async.json.models import NonceResponse
 from mocks import MockAsyncClient, MultiResponseClient, NeverCalledClient
+
+
+def create_test_jwt(exp_seconds_from_now: int = 600) -> str:
+    """Create a test JWT token with a valid exp claim.
+
+    Args:
+        exp_seconds_from_now: Seconds from now when token expires (default: 600 = 10 minutes)
+
+    Returns:
+        A JWT token string with header.payload.signature format
+    """
+    exp_time = time.time() + exp_seconds_from_now
+    payload = {"sub": "owner", "exp": int(exp_time)}
+    payload_encoded = (
+        base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    )
+    return f"header.{payload_encoded}.signature"
 
 
 # Test _generate_client_nonce()
@@ -165,6 +185,8 @@ async def test_perform_login_invalid_credentials():
 @pytest.mark.asyncio
 async def test_get_token_lazy_authentication():
     """Test that get_token() authenticates on first call"""
+    test_jwt = create_test_jwt()
+
     mock_client = MultiResponseClient()
     mock_client.add_get_handler(
         "/auth/unauthorized",
@@ -174,7 +196,7 @@ async def test_get_token_lazy_authentication():
             "error": "Authentication required.",
         },
     )
-    mock_client.add_post_handler("/auth/login", {"jwt": "test_jwt_token_abc123"})
+    mock_client.add_post_handler("/auth/login", {"jwt": test_jwt})
 
     handler = JwtAuthManager(
         "https://egauge12345.local", "owner", "password", mock_client
@@ -183,8 +205,9 @@ async def test_get_token_lazy_authentication():
     # First call should authenticate
     token = await handler.get_token()
 
-    assert token == "test_jwt_token_abc123"
-    assert handler._jwt_token == "test_jwt_token_abc123"
+    assert token == test_jwt
+    assert handler._token_state is not None
+    assert handler._token_state.token == test_jwt
     # Should have made 2 calls: get nonce, then login
     assert len(mock_client.calls) == 2
     assert mock_client.calls[0][0] == "GET"
@@ -194,6 +217,8 @@ async def test_get_token_lazy_authentication():
 @pytest.mark.asyncio
 async def test_get_token_caching():
     """Test that get_token() returns cached token on subsequent calls"""
+    test_jwt = create_test_jwt()
+
     mock_client = MultiResponseClient()
     mock_client.add_get_handler(
         "/auth/unauthorized",
@@ -203,7 +228,7 @@ async def test_get_token_caching():
             "error": "Authentication required.",
         },
     )
-    mock_client.add_post_handler("/auth/login", {"jwt": "test_jwt_token_abc123"})
+    mock_client.add_post_handler("/auth/login", {"jwt": test_jwt})
 
     handler = JwtAuthManager(
         "https://egauge12345.local", "owner", "password", mock_client
@@ -218,19 +243,24 @@ async def test_get_token_caching():
 
     assert token1 == token2
     assert len(mock_client.calls) == call_count_after_first  # No new calls
-    assert token2 == "test_jwt_token_abc123"
+    assert token2 == test_jwt
 
 
 @pytest.mark.asyncio
 async def test_get_token_already_authenticated():
     """Test get_token() when token is already set"""
+
     mock_client = NeverCalledClient()
     handler = JwtAuthManager(
         "https://egauge12345.local", "owner", "password", mock_client
     )
 
-    # Manually set token
-    handler._jwt_token = "existing_token"
+    # Manually set token state with far-future expiration
+    handler._token_state = _TokenState(
+        token="existing_token",
+        expiry_timestamp=time.time() + 3600,  # Expires in 1 hour
+        issued_at=time.time(),
+    )
 
     token = await handler.get_token()
 
@@ -241,6 +271,7 @@ async def test_get_token_already_authenticated():
 @pytest.mark.asyncio
 async def test_logout_success():
     """Test successful logout"""
+
     response_data = {"status": "Token revoked successfully"}
     mock_client = MockAsyncClient(
         "https://egauge12345.local/auth/logout", response_data
@@ -249,12 +280,17 @@ async def test_logout_success():
     handler = JwtAuthManager(
         "https://egauge12345.local", "owner", "password", mock_client
     )
-    handler._jwt_token = "test_token_to_revoke"
+    # Set token state
+    handler._token_state = _TokenState(
+        token="test_token_to_revoke",
+        expiry_timestamp=time.time() + 600,
+        issued_at=time.time(),
+    )
 
     await handler.logout()
 
-    # Token should be cleared
-    assert handler._jwt_token is None
+    # Token state should be cleared
+    assert handler._token_state is None
     # Should have made a GET request to /auth/logout
     assert len(mock_client.calls) == 1
     assert mock_client.calls[0][0] == "GET"
@@ -262,17 +298,20 @@ async def test_logout_success():
 
 @pytest.mark.asyncio
 async def test_logout_when_not_authenticated():
-    """Test logout when no token is set (should be a no-op)"""
-    mock_client = NeverCalledClient()
+    """Test logout when no token is set (should call server but not error)"""
+    response_data = {"status": "OK"}
+    mock_client = MockAsyncClient(
+        "https://egauge12345.local/auth/logout", response_data
+    )
     handler = JwtAuthManager(
         "https://egauge12345.local", "owner", "password", mock_client
     )
 
     # No token set
-    assert handler._jwt_token is None
+    assert handler._token_state is None
 
-    # Should not raise any errors
+    # Should not raise any errors (calls server even without token)
     await handler.logout()
 
     # Still no token
-    assert handler._jwt_token is None
+    assert handler._token_state is None

@@ -8,6 +8,7 @@ from egauge_async.json.type_codes import get_quantum
 from egauge_async.exceptions import (
     EgaugeUnknownRegisterError,
     EgaugeParsingException,
+    EgaugeAuthenticationError,
 )
 
 
@@ -30,11 +31,48 @@ class EgaugeJsonClient:
     async def _get_with_auth(
         self, url: str, params: dict[str, str] | None = None
     ) -> httpx.Response:
-        """Make authenticated GET request with JWT bearer token."""
-        # TODO: need to handle refreshing the token if it's expired
+        """Make authenticated GET request with automatic token refresh.
+
+        Handles token expiration transparently:
+        1. Gets valid token (may trigger proactive refresh)
+        2. Makes request with Bearer token
+        3. On 401: invalidates token, re-authenticates, retries once
+
+        Args:
+            url: Full URL to request
+            params: Optional query parameters
+
+        Returns:
+            HTTP response object
+
+        Raises:
+            EgaugeAuthenticationError: If authentication fails after retry
+        """
+        # Get valid token (may refresh proactively)
         token = await self.auth.get_token()
         headers = {"Authorization": f"Bearer {token}"}
-        return await self.client.get(url, params=params, headers=headers)
+
+        # Make initial request
+        response = await self.client.get(url, params=params, headers=headers)
+
+        # Handle 401 - token may be expired despite checks (clock skew, revocation, etc.)
+        if response.status_code == 401:
+            # Invalidate cached token and re-authenticate
+            await self.auth.invalidate_token()
+            token = await self.auth.get_token()
+            headers = {"Authorization": f"Bearer {token}"}
+
+            # Retry request once
+            response = await self.client.get(url, params=params, headers=headers)
+
+            # If still 401, authentication is truly failing
+            if response.status_code == 401:
+                raise EgaugeAuthenticationError(
+                    "Authentication failed after token refresh. "
+                    "Please verify your credentials."
+                )
+
+        return response
 
     async def get_register_info(self) -> dict[str, RegisterInfo]:
         """Get register metadata (name, type, index, database ID).

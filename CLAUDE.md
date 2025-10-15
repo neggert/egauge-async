@@ -10,41 +10,38 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Environment Setup
 ```bash
-# Install dependencies using uv (recommended)
+# Install dependencies using uv
 uv sync
-
-# Activate virtual environment
-source .venv/bin/activate
 ```
 
 ### Testing
 ```bash
 # Run all tests with coverage
-pytest --cov=egauge_async
+uv run pytest --cov=egauge_async
 
 # Run a single test file
-pytest test/test_client.py
+uv run pytest test/test_client.py
 
 # Run a specific test
-pytest test/test_client.py::test_get_instantaneous_data
+uv run pytest test/test_client.py::test_get_instantaneous_data
 ```
 
 ### Code Quality
 ```bash
 # Run ruff linter (check only)
-ruff check
+uv run ruff check
 
 # Run ruff formatter (check only)
-ruff format --check
+uv run ruff format --check
 
 # Auto-fix linting issues
-ruff check --fix
+uv run ruff check --fix
 
 # Auto-format code
-ruff format
+uv run ruff format
 
 # Run pyright type checker
-pyright
+uv run pyright
 ```
 
 ### Pre-commit Hooks
