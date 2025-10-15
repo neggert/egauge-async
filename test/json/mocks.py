@@ -4,6 +4,23 @@ import json
 from dataclasses import dataclass
 
 
+class MockAuthManager:
+    """Mock JWT authentication manager that returns a fixed token."""
+
+    def __init__(self, token: str = "mock_jwt_token"):
+        self.token = token
+        self.get_token_calls = 0
+
+    async def get_token(self) -> str:
+        """Return mock JWT token."""
+        self.get_token_calls += 1
+        return self.token
+
+    async def logout(self) -> None:
+        """Mock logout (no-op)."""
+        pass
+
+
 @dataclass
 class MockResponse:
     """Mock HTTP response."""

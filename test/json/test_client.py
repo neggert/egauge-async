@@ -5,19 +5,21 @@ from datetime import datetime, timedelta, timezone
 
 from egauge_async.json.client import EgaugeJsonClient
 from egauge_async.json.models import RegisterType
-from mocks import MockAsyncClient, MultiResponseClient
+from mocks import MockAsyncClient, MultiResponseClient, MockAuthManager
 
 
 # Phase 1: Initialization tests
 def test_init_stores_parameters():
     """Test that __init__ stores all parameters correctly."""
     mock_client = MockAsyncClient("https://example.com", {})
+    mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
         base_url="https://egauge12345.local",
         username="owner",
         password="testpass",
         client=mock_client,
+        auth=mock_auth,
     )
 
     assert client.base_url == "https://egauge12345.local"
@@ -27,29 +29,33 @@ def test_init_stores_parameters():
 
 
 def test_init_creates_auth_manager():
-    """Test that __init__ creates a JwtAuthManager instance."""
+    """Test that __init__ uses provided auth manager."""
     mock_client = MockAsyncClient("https://example.com", {})
+    mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
         base_url="https://egauge12345.local",
         username="owner",
         password="testpass",
         client=mock_client,
+        auth=mock_auth,
     )
 
     assert hasattr(client, "auth")
-    assert client.auth is not None
+    assert client.auth is mock_auth
 
 
 def test_init_initializes_register_cache():
     """Test that __init__ initializes _register_cache to None."""
     mock_client = MockAsyncClient("https://example.com", {})
+    mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
         base_url="https://egauge12345.local",
         username="owner",
         password="testpass",
         client=mock_client,
+        auth=mock_auth,
     )
 
     assert client._register_cache is None
@@ -69,13 +75,12 @@ async def test_get_register_info_success():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler(
-        "/auth/unauthorized", {"rlm": "eGauge", "nnc": "abc123"}
-    )
-    mock_client.add_post_handler("/auth/login", {"jwt": "test_token"})
     mock_client.add_get_handler("/register", response_data)
+    mock_auth = MockAuthManager()
 
-    client = EgaugeJsonClient("https://egauge12345.local", "owner", "pass", mock_client)
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
 
     registers = await client.get_register_info()
 
@@ -99,11 +104,12 @@ async def test_get_register_info_caching():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/auth/unauthorized", {"rlm": "eGauge", "nnc": "abc"})
-    mock_client.add_post_handler("/auth/login", {"jwt": "token"})
     mock_client.add_get_handler("/register", response_data)
+    mock_auth = MockAuthManager()
 
-    client = EgaugeJsonClient("https://egauge12345.local", "owner", "pass", mock_client)
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
 
     # First call
     registers1 = await client.get_register_info()
@@ -125,17 +131,17 @@ async def test_get_register_info_uses_bearer_auth():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/auth/unauthorized", {"rlm": "eGauge", "nnc": "abc"})
-    mock_client.add_post_handler("/auth/login", {"jwt": "test_jwt_token"})
     mock_client.add_get_handler("/register", response_data)
+    mock_auth = MockAuthManager()
 
-    client = EgaugeJsonClient("https://egauge12345.local", "owner", "pass", mock_client)
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
 
     await client.get_register_info()
 
-    # Verify auth flow happened (get nonce + login)
-    assert any("/auth/unauthorized" in call[1] for call in mock_client.calls)
-    assert any("/auth/login" in call[1] for call in mock_client.calls)
+    # Verify auth manager was called
+    assert mock_auth.get_token_calls == 1
 
 
 # Phase 3: get_current_measurements() tests
@@ -151,11 +157,12 @@ async def test_get_current_measurements_all_registers():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/auth/unauthorized", {"rlm": "eGauge", "nnc": "abc"})
-    mock_client.add_post_handler("/auth/login", {"jwt": "token"})
     mock_client.add_get_handler("/register", response_data)
+    mock_auth = MockAuthManager()
 
-    client = EgaugeJsonClient("https://egauge12345.local", "owner", "pass", mock_client)
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
 
     measurements = await client.get_current_measurements()
 
@@ -173,11 +180,12 @@ async def test_get_current_measurements_uses_rate_parameter():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/auth/unauthorized", {"rlm": "eGauge", "nnc": "abc"})
-    mock_client.add_post_handler("/auth/login", {"jwt": "token"})
     mock_client.add_get_handler("/register", response_data)
+    mock_auth = MockAuthManager()
 
-    client = EgaugeJsonClient("https://egauge12345.local", "owner", "pass", mock_client)
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
 
     measurements = await client.get_current_measurements()
 
@@ -199,15 +207,14 @@ async def test_get_current_measurements_with_register_filter():
         ],
     }
 
-    # The MultiResponseClient will return register_info_response for first call (caching),
-    # then same response for the filtered measurements call (simplified mock behavior)
+    # The MultiResponseClient will return register_info_response for first call (caching)
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/auth/unauthorized", {"rlm": "eGauge", "nnc": "abc"})
-    mock_client.add_post_handler("/auth/login", {"jwt": "token"})
-    # Register info call will cache the registers
     mock_client.add_get_handler("/register", register_info_response)
+    mock_auth = MockAuthManager()
 
-    client = EgaugeJsonClient("https://egauge12345.local", "owner", "pass", mock_client)
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
 
     # Pre-populate cache by calling get_register_info
     await client.get_register_info()
@@ -237,11 +244,12 @@ async def test_get_current_measurements_no_rate_values():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/auth/unauthorized", {"rlm": "eGauge", "nnc": "abc"})
-    mock_client.add_post_handler("/auth/login", {"jwt": "token"})
     mock_client.add_get_handler("/register", response_data)
+    mock_auth = MockAuthManager()
 
-    client = EgaugeJsonClient("https://egauge12345.local", "owner", "pass", mock_client)
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
 
     measurements = await client.get_current_measurements()
 
@@ -277,11 +285,12 @@ async def test_get_historical_counters_basic():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/auth/unauthorized", {"rlm": "eGauge", "nnc": "abc"})
-    mock_client.add_post_handler("/auth/login", {"jwt": "token"})
     mock_client.add_get_handler("/register", response_data)
+    mock_auth = MockAuthManager()
 
-    client = EgaugeJsonClient("https://egauge12345.local", "owner", "pass", mock_client)
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
 
     start = datetime(2023, 3, 8, 12, 0, 0, tzinfo=timezone.utc)
     end = datetime(2023, 3, 8, 13, 0, 0, tzinfo=timezone.utc)
@@ -322,11 +331,12 @@ async def test_get_historical_counters_multiple_ranges():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/auth/unauthorized", {"rlm": "eGauge", "nnc": "abc"})
-    mock_client.add_post_handler("/auth/login", {"jwt": "token"})
     mock_client.add_get_handler("/register", response_data)
+    mock_auth = MockAuthManager()
 
-    client = EgaugeJsonClient("https://egauge12345.local", "owner", "pass", mock_client)
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
 
     start = datetime(2023, 3, 8, 12, 0, 0, tzinfo=timezone.utc)
     end = datetime(2023, 3, 8, 13, 0, 0, tzinfo=timezone.utc)
@@ -369,11 +379,12 @@ async def test_get_historical_counters_with_register_filter():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/auth/unauthorized", {"rlm": "eGauge", "nnc": "abc"})
-    mock_client.add_post_handler("/auth/login", {"jwt": "token"})
     mock_client.add_get_handler("/register", register_info_response)
+    mock_auth = MockAuthManager()
 
-    client = EgaugeJsonClient("https://egauge12345.local", "owner", "pass", mock_client)
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
 
     # Pre-populate cache
     await client.get_register_info()
@@ -407,11 +418,12 @@ async def test_get_historical_counters_with_max_rows():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/auth/unauthorized", {"rlm": "eGauge", "nnc": "abc"})
-    mock_client.add_post_handler("/auth/login", {"jwt": "token"})
     mock_client.add_get_handler("/register", response_data)
+    mock_auth = MockAuthManager()
 
-    client = EgaugeJsonClient("https://egauge12345.local", "owner", "pass", mock_client)
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
 
     start = datetime(2023, 3, 8, 12, 0, 0, tzinfo=timezone.utc)
     end = datetime(2023, 3, 8, 13, 0, 0, tzinfo=timezone.utc)
