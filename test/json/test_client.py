@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from egauge_async.json.client import EgaugeJsonClient
 from egauge_async.json.models import RegisterType
-from egauge_async.exceptions import EgaugeUnknownRegisterError
+from egauge_async.exceptions import EgaugeUnknownRegisterError, EgaugeParsingException
 from mocks import MockAsyncClient, MultiResponseClient, MockAuthManager
 
 
@@ -236,7 +236,7 @@ async def test_get_current_measurements_with_register_filter():
 
 @pytest.mark.asyncio
 async def test_get_current_measurements_no_rate_values():
-    """Test handling response with registers but no rate values."""
+    """Test that missing rate field raises EgaugeParsingException."""
     response_data = {
         "ts": "1678330813.000",
         "registers": [
@@ -252,10 +252,11 @@ async def test_get_current_measurements_no_rate_values():
         "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
     )
 
-    measurements = await client.get_current_measurements()
-
-    # Should return empty dict since no rate values present
-    assert len(measurements) == 0
+    # Should raise exception since rate field is missing
+    with pytest.raises(
+        EgaugeParsingException, match="Register 'Grid' missing 'rate' field"
+    ):
+        await client.get_current_measurements()
 
 
 @pytest.mark.asyncio

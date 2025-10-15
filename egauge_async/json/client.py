@@ -5,7 +5,10 @@ import httpx
 from egauge_async.json.auth import JwtAuthManager
 from egauge_async.json.models import RegisterType, RegisterInfo
 from egauge_async.json.type_codes import get_quantum
-from egauge_async.exceptions import EgaugeUnknownRegisterError
+from egauge_async.exceptions import (
+    EgaugeUnknownRegisterError,
+    EgaugeParsingException,
+)
 
 
 class EgaugeJsonClient:
@@ -96,8 +99,12 @@ class EgaugeJsonClient:
         measurements: dict[str, float] = {}
 
         for reg in data.get("registers", []):
-            if "rate" in reg:
-                measurements[reg["name"]] = reg["rate"]
+            reg_name = reg.get("name", "unknown")
+            if "rate" not in reg:
+                raise EgaugeParsingException(
+                    f"Register '{reg_name}' missing 'rate' field in response"
+                )
+            measurements[reg_name] = reg["rate"]
 
         return measurements
 
