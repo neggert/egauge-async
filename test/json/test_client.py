@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 from egauge_async.json.client import EgaugeJsonClient
 from egauge_async.json.models import RegisterType
+from egauge_async.exceptions import EgaugeUnknownRegisterError
 from mocks import MockAsyncClient, MultiResponseClient, MockAuthManager
 
 
@@ -257,6 +258,35 @@ async def test_get_current_measurements_no_rate_values():
     assert len(measurements) == 0
 
 
+@pytest.mark.asyncio
+async def test_get_current_measurements_unknown_register():
+    """Test that requesting an unknown register raises EgaugeUnknownRegisterError."""
+    register_info_response = {
+        "ts": "1678330813.000",
+        "registers": [
+            {"name": "Grid", "type": "P", "idx": 17, "did": 0},
+            {"name": "Solar", "type": "P", "idx": 18, "did": 1},
+        ],
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/register", register_info_response)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    # Pre-populate cache
+    await client.get_register_info()
+
+    # Try to get measurements for an unknown register
+    with pytest.raises(
+        EgaugeUnknownRegisterError, match="Unknown register Nonexistent"
+    ):
+        await client.get_current_measurements(registers=["Nonexistent"])
+
+
 # Phase 4: get_historical_counters() tests
 @pytest.mark.asyncio
 async def test_get_historical_counters_basic():
@@ -433,3 +463,38 @@ async def test_get_historical_counters_with_max_rows():
 
     # Should only return 2 rows as limited by max_rows
     assert len(result) == 2
+
+
+@pytest.mark.asyncio
+async def test_get_historical_counters_unknown_register():
+    """Test that requesting an unknown register raises EgaugeUnknownRegisterError."""
+    register_info_response = {
+        "ts": "1678330813.000",
+        "registers": [
+            {"name": "Grid", "type": "P", "idx": 17, "did": 0},
+            {"name": "Solar", "type": "P", "idx": 18, "did": 1},
+        ],
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/register", register_info_response)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    # Pre-populate cache
+    await client.get_register_info()
+
+    start = datetime(2023, 3, 8, 12, 0, 0, tzinfo=timezone.utc)
+    end = datetime(2023, 3, 8, 13, 0, 0, tzinfo=timezone.utc)
+    step = timedelta(seconds=60)
+
+    # Try to get historical data for an unknown register
+    with pytest.raises(
+        EgaugeUnknownRegisterError, match="Unknown register Nonexistent"
+    ):
+        await client.get_historical_counters(
+            start, end, step, registers=["Nonexistent"]
+        )
