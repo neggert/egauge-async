@@ -135,3 +135,114 @@ async def test_get_register_info_uses_bearer_auth():
     # Verify auth flow happened (get nonce + login)
     assert any("/auth/unauthorized" in call[1] for call in mock_client.calls)
     assert any("/auth/login" in call[1] for call in mock_client.calls)
+
+
+# Phase 3: get_current_measurements() tests
+@pytest.mark.asyncio
+async def test_get_current_measurements_all_registers():
+    """Test fetching current measurements for all registers."""
+    response_data = {
+        "ts": "1678330813.000",
+        "registers": [
+            {"name": "Grid", "type": "P", "idx": 17, "rate": 1798.5},
+            {"name": "Solar", "type": "P", "idx": 18, "rate": -450.3},
+        ],
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/auth/unauthorized", {"rlm": "eGauge", "nnc": "abc"})
+    mock_client.add_post_handler("/auth/login", {"jwt": "token"})
+    mock_client.add_get_handler("/register", response_data)
+
+    client = EgaugeJsonClient("https://egauge12345.local", "owner", "pass", mock_client)
+
+    measurements = await client.get_current_measurements()
+
+    assert len(measurements) == 2
+    assert measurements["Grid"] == 1798.5
+    assert measurements["Solar"] == -450.3
+
+
+@pytest.mark.asyncio
+async def test_get_current_measurements_uses_rate_parameter():
+    """Test that current measurements request includes rate parameter."""
+    response_data = {
+        "ts": "1678330813.000",
+        "registers": [{"name": "Grid", "type": "P", "idx": 17, "rate": 1798.5}],
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/auth/unauthorized", {"rlm": "eGauge", "nnc": "abc"})
+    mock_client.add_post_handler("/auth/login", {"jwt": "token"})
+    mock_client.add_get_handler("/register", response_data)
+
+    client = EgaugeJsonClient("https://egauge12345.local", "owner", "pass", mock_client)
+
+    measurements = await client.get_current_measurements()
+
+    # Verify measurements were returned correctly
+    assert len(measurements) == 1
+    assert measurements["Grid"] == 1798.5
+
+
+@pytest.mark.asyncio
+async def test_get_current_measurements_with_register_filter():
+    """Test filtering current measurements to specific registers."""
+    # First response: register info for mapping names to indices
+    register_info_response = {
+        "ts": "1678330813.000",
+        "registers": [
+            {"name": "Grid", "type": "P", "idx": 17, "did": 0},
+            {"name": "Solar", "type": "P", "idx": 18, "did": 1},
+            {"name": "Total", "type": "P", "idx": 19},
+        ],
+    }
+
+    # The MultiResponseClient will return register_info_response for first call (caching),
+    # then same response for the filtered measurements call (simplified mock behavior)
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/auth/unauthorized", {"rlm": "eGauge", "nnc": "abc"})
+    mock_client.add_post_handler("/auth/login", {"jwt": "token"})
+    # Register info call will cache the registers
+    mock_client.add_get_handler("/register", register_info_response)
+
+    client = EgaugeJsonClient("https://egauge12345.local", "owner", "pass", mock_client)
+
+    # Pre-populate cache by calling get_register_info
+    await client.get_register_info()
+
+    # Now add handler for the filtered measurement call
+    filtered_response = {
+        "ts": "1678330813.000",
+        "registers": [{"name": "Grid", "type": "P", "idx": 17, "rate": 1798.5}],
+    }
+    mock_client.add_get_handler("/register", filtered_response)
+
+    measurements = await client.get_current_measurements(registers=["Grid"])
+
+    # Should only return Grid with rate value
+    assert len(measurements) == 1
+    assert measurements["Grid"] == 1798.5
+
+
+@pytest.mark.asyncio
+async def test_get_current_measurements_no_rate_values():
+    """Test handling response with registers but no rate values."""
+    response_data = {
+        "ts": "1678330813.000",
+        "registers": [
+            {"name": "Grid", "type": "P", "idx": 17},  # No rate field
+        ],
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/auth/unauthorized", {"rlm": "eGauge", "nnc": "abc"})
+    mock_client.add_post_handler("/auth/login", {"jwt": "token"})
+    mock_client.add_get_handler("/register", response_data)
+
+    client = EgaugeJsonClient("https://egauge12345.local", "owner", "pass", mock_client)
+
+    measurements = await client.get_current_measurements()
+
+    # Should return empty dict since no rate values present
+    assert len(measurements) == 0

@@ -61,19 +61,42 @@ class EgaugeJsonClient:
         self._register_cache = registers
         return registers
 
-    def get_current_measurements(
+    async def get_current_measurements(
         self, registers: list[str] | None = None
     ) -> dict[str, float]:
-        """
-        Gets the current measurements
+        """Get current instantaneous measurements (rate values).
 
         Args:
-            registers: list of registers to query. If `None`, returns values for all registers.
+            registers: List of register names to query. If None, returns all registers.
 
         Returns:
-            A dict mapping register name to measurement
+            Dictionary mapping register name to current rate value (already in physical units)
         """
-        pass
+        url = f"{self.base_url}/register"
+        params: dict[str, str] = {"rate": ""}
+
+        # Filter to specific registers if requested
+        if registers is not None and len(registers) > 0:
+            # Get register info to map names to indices
+            reg_info = await self.get_register_info()
+            indices = [reg_info[name].idx for name in registers if name in reg_info]
+
+            if indices:
+                # Build reg parameter: "none+idx1+idx2+idx3"
+                reg_param = "none" + "".join(f"+{idx}" for idx in indices)
+                params["reg"] = reg_param
+
+        response = await self._get_with_auth(url, params)
+        response.raise_for_status()
+
+        data = response.json()
+        measurements: dict[str, float] = {}
+
+        for reg in data.get("registers", []):
+            if "rate" in reg:
+                measurements[reg["name"]] = reg["rate"]
+
+        return measurements
 
     def get_historical_counters(
         self,
