@@ -14,6 +14,11 @@ class MockResponse:
     def json(self):
         return json.loads(self.text)
 
+    def raise_for_status(self):
+        """Raise an exception for HTTP error status codes."""
+        if self.status_code >= 400:
+            raise Exception(f"HTTP {self.status_code}")
+
 
 class MockAsyncClient:
     """Mock HTTP client that expects specific URLs and returns canned responses."""
@@ -24,7 +29,7 @@ class MockAsyncClient:
         self.status_code = status_code
         self.calls = []
 
-    async def get(self, url: str):
+    async def get(self, url: str, **kwargs):
         self.calls.append(("GET", url, None))
         assert url == self.expected_url, f"Expected URL {self.expected_url}, got {url}"
         return MockResponse(json.dumps(self.response_json), self.status_code)
@@ -56,7 +61,7 @@ class MultiResponseClient:
         """Add a handler for POST requests matching the URL pattern."""
         self._post_handlers[url_pattern] = (response_json, status_code)
 
-    async def get(self, url: str):
+    async def get(self, url: str, **kwargs):
         self.calls.append(("GET", url))
 
         for pattern, (response_json, status_code) in self._get_handlers.items():
@@ -82,7 +87,7 @@ class NeverCalledClient:
     def __init__(self, error_message: str = "Should not be called"):
         self.error_message = error_message
 
-    async def get(self, url: str):
+    async def get(self, url: str, **kwargs):
         raise AssertionError(self.error_message)
 
     async def post(self, url: str, **kwargs):

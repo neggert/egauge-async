@@ -26,8 +26,40 @@ class EgaugeJsonClient:
         self.auth = JwtAuthManager(base_url, username, password, client)
         self._register_cache: dict[str, RegisterInfo] | None = None
 
-    def get_register_info(self) -> dict[str, RegisterInfo]:
-        pass
+    async def _get_with_auth(
+        self, url: str, params: dict[str, str] | None = None
+    ) -> httpx.Response:
+        """Make authenticated GET request with JWT bearer token."""
+        token = await self.auth.get_token()
+        headers = {"Authorization": f"Bearer {token}"}
+        return await self.client.get(url, params=params, headers=headers)
+
+    async def get_register_info(self) -> dict[str, RegisterInfo]:
+        """Get register metadata (name, type, index, database ID).
+
+        Returns:
+            Dictionary mapping register name to RegisterInfo
+        """
+        if self._register_cache is not None:
+            return self._register_cache
+
+        url = f"{self.base_url}/register"
+        response = await self._get_with_auth(url)
+        response.raise_for_status()
+
+        data = response.json()
+        registers: dict[str, RegisterInfo] = {}
+
+        for reg in data.get("registers", []):
+            registers[reg["name"]] = RegisterInfo(
+                name=reg["name"],
+                type=RegisterType(reg["type"]),
+                idx=reg["idx"],
+                did=reg.get("did"),  # None for virtual registers
+            )
+
+        self._register_cache = registers
+        return registers
 
     def get_current_measurements(
         self, registers: list[str] | None = None
