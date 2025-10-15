@@ -1,10 +1,11 @@
-import datetime
 from dataclasses import dataclass
+from datetime import datetime as dt, timedelta, timezone
 
 import httpx
 
 from egauge_async.json.auth import JwtAuthManager
 from egauge_async.json.models import RegisterType
+from egauge_async.json.type_codes import get_quantum
 
 
 @dataclass
@@ -98,16 +99,15 @@ class EgaugeJsonClient:
 
         return measurements
 
-    def get_historical_counters(
+    async def get_historical_counters(
         self,
-        start_time: datetime.datetime,
-        end_time: datetime.datetime,
-        step: datetime.timedelta,
+        start_time: dt,
+        end_time: dt,
+        step: timedelta,
         registers: list[str] | None = None,
         max_rows: int | None = None,
-    ) -> list[dict[str, datetime.datetime | float]]:
-        """
-        Gets historical values of register counters
+    ) -> list[dict[str, dt | float]]:
+        """Get historical cumulative counter values with quantum conversion.
 
         Returned values contain the eGauge's cumulative counter at a given timestamp, not the
         measured value. The eGauge internally increments each counter by the measured value every second,
@@ -115,16 +115,68 @@ class EgaugeJsonClient:
         `unit * seconds` (for example power registers will return values in Watt * seconds).
 
         Args:
-            start_time: earliest time to return
-            end_time: latest time to return
-            step: time interval between consecutive entries
-            registers: list of registers to query. If `None`, returns values for all registers.
-            max_rows: maximum number of rows to return (requires eGauge firmware >= 4.7)
+            start_time: Earliest timestamp to return
+            end_time: Latest timestamp to return
+            step: Time interval between consecutive entries
+            registers: List of register names to query. If None, returns all registers.
+            max_rows: Maximum number of rows to return (requires firmware >= 4.7)
 
         Returns:
-            A list of data rows. Each row is a dict containing a "ts" key with the entry's timestamp
-            as well as a key for each register. Register values contain the _cumulative counter_ of the
-            corresponding eGauge register at that timestamp.
+            List of data rows. Each row is a dict with:
+            - "ts": datetime (timestamp)
+            - Register names mapped to physical cumulative values (float, in rate_unit·seconds)
         """
+        url = f"{self.base_url}/register"
 
-        pass
+        # Convert datetimes to Unix timestamps
+        start_ts = int(start_time.timestamp())
+        end_ts = int(end_time.timestamp())
+        step_seconds = int(step.total_seconds())
+
+        # Build query parameters
+        params: dict[str, str] = {"time": f"{start_ts}:{step_seconds}:{end_ts}"}
+
+        # Filter to specific registers if requested
+        if registers is not None and len(registers) > 0:
+            reg_info = await self.get_register_info()
+            indices = [reg_info[name].idx for name in registers if name in reg_info]
+
+            if indices:
+                reg_param = "none" + "".join(f"+{idx}" for idx in indices)
+                params["reg"] = reg_param
+
+        if max_rows is not None:
+            params["max-rows"] = str(max_rows)
+
+        response = await self._get_with_auth(url, params)
+        response.raise_for_status()
+
+        data = response.json()
+
+        # Extract register names and types
+        registers_list = data.get("registers", [])
+        reg_names = [r["name"] for r in registers_list]
+        reg_types = [RegisterType(r["type"]) for r in registers_list]
+
+        # Parse ranges and convert values
+        result: list[dict[str, dt | float]] = []
+
+        for range_obj in data.get("ranges", []):
+            ts = float(range_obj["ts"])
+            delta = range_obj["delta"]
+
+            for i, row in enumerate(range_obj["rows"]):
+                # Calculate timestamp for this row
+                row_ts = dt.fromtimestamp(ts + i * delta, tz=timezone.utc)
+                row_dict: dict[str, dt | float] = {"ts": row_ts}
+
+                # Convert each value with quantum
+                for j, value_str in enumerate(row):
+                    raw_value = int(value_str)
+                    quantum = get_quantum(reg_types[j])
+                    physical_value = raw_value * quantum
+                    row_dict[reg_names[j]] = physical_value
+
+                result.append(row_dict)
+
+        return result
