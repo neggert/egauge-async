@@ -46,6 +46,14 @@ class RegisterType(StrEnum):
 
 
 @dataclass
+class RegisterInfo:
+    name: str
+    type: RegisterType
+    idx: int
+    did: int | None = None
+
+
+@dataclass
 class NonceResponse:
     """Response from /auth/unauthorized endpoint containing server nonce"""
 

@@ -1,36 +1,34 @@
-from dataclasses import dataclass
 from datetime import datetime as dt, timedelta, timezone
 
 import httpx
 
 from egauge_async.json.auth import JwtAuthManager
-from egauge_async.json.models import RegisterType
+from egauge_async.json.models import RegisterType, RegisterInfo
 from egauge_async.json.type_codes import get_quantum
-
-
-@dataclass
-class RegisterInfo:
-    name: str
-    type: RegisterType
-    idx: int
-    did: int | None = None
+from egauge_async.exceptions import EgaugeUnknownRegisterError
 
 
 class EgaugeJsonClient:
     def __init__(
-        self, base_url: str, username: str, password: str, client: httpx.AsyncClient
+        self,
+        base_url: str,
+        username: str,
+        password: str,
+        client: httpx.AsyncClient,
+        auth: JwtAuthManager | None,
     ):
         self.base_url = base_url
         self.username = username
         self.password = password
         self.client = client
-        self.auth = JwtAuthManager(base_url, username, password, client)
+        self.auth = auth or JwtAuthManager(base_url, username, password, client)
         self._register_cache: dict[str, RegisterInfo] | None = None
 
     async def _get_with_auth(
         self, url: str, params: dict[str, str] | None = None
     ) -> httpx.Response:
         """Make authenticated GET request with JWT bearer token."""
+        # TODO: need to handle refreshing the token if it's expired
         token = await self.auth.get_token()
         headers = {"Authorization": f"Bearer {token}"}
         return await self.client.get(url, params=params, headers=headers)
@@ -80,7 +78,11 @@ class EgaugeJsonClient:
         if registers is not None and len(registers) > 0:
             # Get register info to map names to indices
             reg_info = await self.get_register_info()
-            indices = [reg_info[name].idx for name in registers if name in reg_info]
+            indices: list[int] = []
+            for r in registers:
+                if r not in reg_info:
+                    raise EgaugeUnknownRegisterError(f"Unknown register {r}")
+                indices.append(reg_info[r].idx)
 
             if indices:
                 # Build reg parameter: "none+idx1+idx2+idx3"
@@ -139,7 +141,11 @@ class EgaugeJsonClient:
         # Filter to specific registers if requested
         if registers is not None and len(registers) > 0:
             reg_info = await self.get_register_info()
-            indices = [reg_info[name].idx for name in registers if name in reg_info]
+            indices: list[int] = []
+            for r in registers:
+                if r not in reg_info:
+                    raise EgaugeUnknownRegisterError(f"Unknown register {r}")
+                indices.append(reg_info[r].idx)
 
             if indices:
                 reg_param = "none" + "".join(f"+{idx}" for idx in indices)
