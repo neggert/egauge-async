@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 import httpx
 
+from egauge_async.json.auth import JwtAuthManager
 from egauge_async.json.models import RegisterType
 
 
@@ -11,14 +12,19 @@ class RegisterInfo:
     name: str
     type: RegisterType
     idx: int
-    did: int
+    did: int | None = None
 
 
 class EgaugeJsonClient:
     def __init__(
         self, base_url: str, username: str, password: str, client: httpx.AsyncClient
     ):
-        pass
+        self.base_url = base_url
+        self.username = username
+        self.password = password
+        self.client = client
+        self.auth = JwtAuthManager(base_url, username, password, client)
+        self._register_cache: dict[str, RegisterInfo] | None = None
 
     def get_register_info(self) -> dict[str, RegisterInfo]:
         pass
