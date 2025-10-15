@@ -3,9 +3,46 @@ from enum import StrEnum
 
 
 class RegisterType(StrEnum):
-    VOLTAGE = "V"
+    """eGauge register type codes with their API string values."""
+
+    # Numeric types
+    WHOLE_NUMBER = "#"
+    NUMBER_3_DECIMAL = "#3"
+    DISCRETE = "d"
+
+    # Electrical - Power & Energy
     POWER = "P"
+    APPARENT_POWER = "S"
+    REACTIVE_POWER = "var"
+
+    # Electrical - Voltage & Current
+    VOLTAGE = "V"
     CURRENT = "I"
+    RESISTANCE = "R"
+    ELECTRIC_CHARGE = "Qe"
+
+    # Environmental
+    TEMPERATURE = "T"
+    HUMIDITY = "h"
+    PRESSURE = "Pa"
+    AIR_QUALITY = "aq"
+
+    # Frequency & Signal
+    FREQUENCY = "F"
+    ANGLE = "a"
+    THD = "THD"
+
+    # Flow & Mass
+    MASS_FLOW = "Q"
+    VOLUMETRIC_FLOW = "Qv"
+    MASS = "m"
+    SPEED = "v"
+
+    # Other
+    PERCENTAGE = "%"
+    MONETARY = "$"
+    IRRADIANCE = "Ee"
+    PPM = "ppm"
 
 
 @dataclass
