@@ -145,6 +145,73 @@ async def test_get_register_info_uses_bearer_auth():
     assert mock_auth.get_token_calls == 1
 
 
+@pytest.mark.asyncio
+async def test_get_register_info_missing_name_field():
+    """Test that missing name field raises EgaugeParsingException."""
+    response_data = {
+        "ts": "1678330813.000",
+        "registers": [{"type": "P", "idx": 17, "did": 0}],  # No name field
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/register", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    # Should raise exception since name field is missing
+    with pytest.raises(EgaugeParsingException, match="Register missing 'name' field"):
+        await client.get_register_info()
+
+
+@pytest.mark.asyncio
+async def test_get_register_info_missing_type_field():
+    """Test that missing type field raises EgaugeParsingException."""
+    response_data = {
+        "ts": "1678330813.000",
+        "registers": [{"name": "Grid", "idx": 17, "did": 0}],  # No type field
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/register", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    # Should raise exception since type field is missing
+    with pytest.raises(
+        EgaugeParsingException, match="Register 'Grid' missing 'type' field"
+    ):
+        await client.get_register_info()
+
+
+@pytest.mark.asyncio
+async def test_get_register_info_missing_idx_field():
+    """Test that missing idx field raises EgaugeParsingException."""
+    response_data = {
+        "ts": "1678330813.000",
+        "registers": [{"name": "Grid", "type": "P", "did": 0}],  # No idx field
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/register", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    # Should raise exception since idx field is missing
+    with pytest.raises(
+        EgaugeParsingException, match="Register 'Grid' missing 'idx' field"
+    ):
+        await client.get_register_info()
+
+
 # Phase 3: get_current_measurements() tests
 @pytest.mark.asyncio
 async def test_get_current_measurements_all_registers():
@@ -286,6 +353,29 @@ async def test_get_current_measurements_unknown_register():
         EgaugeUnknownRegisterError, match="Unknown register Nonexistent"
     ):
         await client.get_current_measurements(registers=["Nonexistent"])
+
+
+@pytest.mark.asyncio
+async def test_get_current_measurements_missing_name_field():
+    """Test that missing name field raises EgaugeParsingException."""
+    response_data = {
+        "ts": "1678330813.000",
+        "registers": [
+            {"type": "P", "idx": 17, "rate": 1798.5}  # No name field
+        ],
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/register", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    # Should raise exception since name field is missing
+    with pytest.raises(EgaugeParsingException, match="Register missing 'name' field"):
+        await client.get_current_measurements()
 
 
 # Phase 4: get_historical_counters() tests
@@ -499,3 +589,55 @@ async def test_get_historical_counters_unknown_register():
         await client.get_historical_counters(
             start, end, step, registers=["Nonexistent"]
         )
+
+
+@pytest.mark.asyncio
+async def test_get_historical_counters_missing_name_field():
+    """Test that missing name field raises EgaugeParsingException."""
+    response_data = {
+        "registers": [{"type": "P", "idx": 17}],  # No name field
+        "ranges": [{"ts": "1678298313.000", "delta": 60, "rows": [["100"]]}],
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/register", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    start = datetime(2023, 3, 8, 12, 0, 0, tzinfo=timezone.utc)
+    end = datetime(2023, 3, 8, 13, 0, 0, tzinfo=timezone.utc)
+    step = timedelta(seconds=60)
+
+    # Should raise exception since name field is missing
+    with pytest.raises(EgaugeParsingException, match="Register missing 'name' field"):
+        await client.get_historical_counters(start, end, step)
+
+
+@pytest.mark.asyncio
+async def test_get_historical_counters_missing_type_field():
+    """Test that missing type field raises EgaugeParsingException."""
+    response_data = {
+        "registers": [{"name": "Grid", "idx": 17}],  # No type field
+        "ranges": [{"ts": "1678298313.000", "delta": 60, "rows": [["100"]]}],
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/register", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    start = datetime(2023, 3, 8, 12, 0, 0, tzinfo=timezone.utc)
+    end = datetime(2023, 3, 8, 13, 0, 0, tzinfo=timezone.utc)
+    step = timedelta(seconds=60)
+
+    # Should raise exception since type field is missing
+    with pytest.raises(
+        EgaugeParsingException, match="Register 'Grid' missing 'type' field"
+    ):
+        await client.get_historical_counters(start, end, step)

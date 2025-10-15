@@ -53,6 +53,20 @@ class EgaugeJsonClient:
         registers: dict[str, RegisterInfo] = {}
 
         for reg in data.get("registers", []):
+            # Validate required fields are present
+            if "name" not in reg:
+                raise EgaugeParsingException(
+                    "Register missing 'name' field in response"
+                )
+            if "type" not in reg:
+                raise EgaugeParsingException(
+                    f"Register '{reg['name']}' missing 'type' field in response"
+                )
+            if "idx" not in reg:
+                raise EgaugeParsingException(
+                    f"Register '{reg['name']}' missing 'idx' field in response"
+                )
+
             registers[reg["name"]] = RegisterInfo(
                 name=reg["name"],
                 type=RegisterType(reg["type"]),
@@ -99,12 +113,15 @@ class EgaugeJsonClient:
         measurements: dict[str, float] = {}
 
         for reg in data.get("registers", []):
-            reg_name = reg.get("name", "unknown")
+            if "name" not in reg:
+                raise EgaugeParsingException(
+                    "Register missing 'name' field in response"
+                )
             if "rate" not in reg:
                 raise EgaugeParsingException(
-                    f"Register '{reg_name}' missing 'rate' field in response"
+                    f"Register '{reg['name']}' missing 'rate' field in response"
                 )
-            measurements[reg_name] = reg["rate"]
+            measurements[reg["name"]] = reg["rate"]
 
         return measurements
 
@@ -168,8 +185,21 @@ class EgaugeJsonClient:
 
         # Extract register names and types
         registers_list = data.get("registers", [])
-        reg_names = [r["name"] for r in registers_list]
-        reg_types = [RegisterType(r["type"]) for r in registers_list]
+
+        # Validate required fields and extract data
+        reg_names: list[str] = []
+        reg_types: list[RegisterType] = []
+        for r in registers_list:
+            if "name" not in r:
+                raise EgaugeParsingException(
+                    "Register missing 'name' field in response"
+                )
+            if "type" not in r:
+                raise EgaugeParsingException(
+                    f"Register '{r['name']}' missing 'type' field in response"
+                )
+            reg_names.append(r["name"])
+            reg_types.append(RegisterType(r["type"]))
 
         # Parse ranges and convert values
         result: list[dict[str, dt | float]] = []
