@@ -32,7 +32,7 @@ class JwtAuthManager:
         client: httpx.AsyncClient,
         refresh_buffer_seconds: int = 60,
     ):
-        self.base_url = base_url
+        self.base_url = base_url.rstrip("/")
         self.username = username
         self.password = password
         self.client = client
@@ -224,6 +224,7 @@ class JwtAuthManager:
         )
 
         if response.status_code != 200:
+            print(response.text)
             raise EgaugeAuthenticationError(
                 f"Login failed: HTTP {response.status_code}"
             )

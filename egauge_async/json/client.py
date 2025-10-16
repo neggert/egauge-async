@@ -19,9 +19,9 @@ class EgaugeJsonClient:
         username: str,
         password: str,
         client: httpx.AsyncClient,
-        auth: JwtAuthManager | None,
+        auth: JwtAuthManager | None = None,
     ):
-        self.base_url = base_url
+        self.base_url = base_url.rstrip("/")
         self.username = username
         self.password = password
         self.client = client
