@@ -248,7 +248,7 @@ class EgaugeJsonClient:
 
             for i, row in enumerate(range_obj["rows"]):
                 # Calculate timestamp for this row
-                row_ts = dt.fromtimestamp(ts + i * delta, tz=timezone.utc)
+                row_ts = dt.fromtimestamp(ts - i * delta, tz=timezone.utc)
                 row_dict: dict[str, dt | float] = {"ts": row_ts}
 
                 # Convert each value with quantum

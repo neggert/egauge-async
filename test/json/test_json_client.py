@@ -426,8 +426,8 @@ async def test_get_historical_counters_basic():
     assert result[0]["Grid"] == 7494425049.0  # quantum=1.0 for Power
     assert result[0]["Voltage"] == 120000.0  # 120000000 * 0.001 for Voltage
 
-    # Second row (60 seconds later)
-    assert result[1]["ts"] == datetime.fromtimestamp(1678298313.0 + 60, tz=timezone.utc)
+    # Second row (60 seconds earlier)
+    assert result[1]["ts"] == datetime.fromtimestamp(1678298313.0 - 60, tz=timezone.utc)
     assert result[1]["Grid"] == 7494425954.0
     assert result[1]["Voltage"] == 120000.5  # 120000500 * 0.001
 
@@ -471,14 +471,14 @@ async def test_get_historical_counters_multiple_ranges():
     # First range rows
     assert result[0]["ts"] == datetime.fromtimestamp(1678298313.0, tz=timezone.utc)
     assert result[0]["Grid"] == 100.0
-    assert result[1]["ts"] == datetime.fromtimestamp(1678298313.0 + 60, tz=timezone.utc)
+    assert result[1]["ts"] == datetime.fromtimestamp(1678298313.0 - 60, tz=timezone.utc)
     assert result[1]["Grid"] == 200.0
 
     # Second range rows with different delta
     assert result[2]["ts"] == datetime.fromtimestamp(1678298500.0, tz=timezone.utc)
     assert result[2]["Grid"] == 300.0
     assert result[3]["ts"] == datetime.fromtimestamp(
-        1678298500.0 + 3600, tz=timezone.utc
+        1678298500.0 - 3600, tz=timezone.utc
     )
     assert result[3]["Grid"] == 400.0
 
