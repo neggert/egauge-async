@@ -1,7 +1,33 @@
 """Mock HTTP clients for JSON API tests."""
 
+import base64
 import json
+import time
 from dataclasses import dataclass
+
+
+def create_egauge_jwt(lifetime_seconds: int = 600) -> str:
+    """Create a test JWT token with eGauge's beg/ltm format.
+
+    Args:
+        lifetime_seconds: Token lifetime in seconds (default: 600 = 10 minutes)
+
+    Returns:
+        A JWT token string with header.payload.signature format
+    """
+    now = time.time()
+    payload = {
+        "rlm": "eGauge Administration",
+        "usr": "readonly",
+        "prv": 0,
+        "beg": int(now),
+        "ltm": lifetime_seconds,
+        "gen": 0,
+    }
+    payload_encoded = (
+        base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    )
+    return f"header.{payload_encoded}.signature"
 
 
 class MockAuthManager:

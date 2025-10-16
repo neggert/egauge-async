@@ -8,24 +8,12 @@ import pytest
 from egauge_async.exceptions import EgaugeAuthenticationError
 from egauge_async.json.auth import JwtAuthManager, _TokenState
 from egauge_async.json.models import NonceResponse
-from mocks import MockAsyncClient, MultiResponseClient, NeverCalledClient
-
-
-def create_test_jwt(exp_seconds_from_now: int = 600) -> str:
-    """Create a test JWT token with a valid exp claim.
-
-    Args:
-        exp_seconds_from_now: Seconds from now when token expires (default: 600 = 10 minutes)
-
-    Returns:
-        A JWT token string with header.payload.signature format
-    """
-    exp_time = time.time() + exp_seconds_from_now
-    payload = {"sub": "owner", "exp": int(exp_time)}
-    payload_encoded = (
-        base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
-    )
-    return f"header.{payload_encoded}.signature"
+from mocks import (
+    MockAsyncClient,
+    MultiResponseClient,
+    NeverCalledClient,
+    create_egauge_jwt,
+)
 
 
 # Test _generate_client_nonce()
@@ -79,6 +67,173 @@ def test_calculate_digest_hash_different_inputs():
     )
 
     assert hash1 != hash2
+
+
+# Test _parse_jwt_expiry()
+def test_parse_jwt_expiry_valid_egauge_token():
+    """Test parsing a valid eGauge JWT with beg and ltm fields"""
+    token = create_egauge_jwt(lifetime_seconds=600)
+    expiry = JwtAuthManager._parse_jwt_expiry(token)
+
+    # Expiry should be approximately 600 seconds from now
+    expected_expiry = time.time() + 600
+    assert abs(expiry - expected_expiry) < 2  # Allow 2 second tolerance
+
+
+def test_parse_jwt_expiry_missing_beg():
+    """Test that missing 'beg' field raises EgaugeParsingException"""
+    from egauge_async.exceptions import EgaugeParsingException
+
+    # Create JWT without 'beg' field
+    payload = {"ltm": 600, "usr": "readonly"}
+    payload_encoded = (
+        base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    )
+    token = f"header.{payload_encoded}.signature"
+
+    with pytest.raises(
+        EgaugeParsingException, match="JWT missing 'beg' \\(begin timestamp\\) claim"
+    ):
+        JwtAuthManager._parse_jwt_expiry(token)
+
+
+def test_parse_jwt_expiry_missing_ltm():
+    """Test that missing 'ltm' field raises EgaugeParsingException"""
+    from egauge_async.exceptions import EgaugeParsingException
+
+    # Create JWT without 'ltm' field
+    payload = {"beg": int(time.time()), "usr": "readonly"}
+    payload_encoded = (
+        base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    )
+    token = f"header.{payload_encoded}.signature"
+
+    with pytest.raises(
+        EgaugeParsingException, match="JWT missing 'ltm' \\(lifetime\\) claim"
+    ):
+        JwtAuthManager._parse_jwt_expiry(token)
+
+
+def test_parse_jwt_expiry_invalid_beg_type():
+    """Test that non-numeric 'beg' field raises EgaugeParsingException"""
+    from egauge_async.exceptions import EgaugeParsingException
+
+    payload = {"beg": "not_a_number", "ltm": 600}
+    payload_encoded = (
+        base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    )
+    token = f"header.{payload_encoded}.signature"
+
+    with pytest.raises(
+        EgaugeParsingException,
+        match="JWT 'beg' claim must be numeric, got invalid string",
+    ):
+        JwtAuthManager._parse_jwt_expiry(token)
+
+
+def test_parse_jwt_expiry_invalid_ltm_type():
+    """Test that non-numeric 'ltm' field raises EgaugeParsingException"""
+    from egauge_async.exceptions import EgaugeParsingException
+
+    payload = {"beg": int(time.time()), "ltm": "not_a_number"}
+    payload_encoded = (
+        base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    )
+    token = f"header.{payload_encoded}.signature"
+
+    with pytest.raises(
+        EgaugeParsingException,
+        match="JWT 'ltm' claim must be numeric, got invalid string",
+    ):
+        JwtAuthManager._parse_jwt_expiry(token)
+
+
+def test_parse_jwt_expiry_negative_lifetime():
+    """Test that negative lifetime raises EgaugeParsingException"""
+    from egauge_async.exceptions import EgaugeParsingException
+
+    payload = {"beg": int(time.time()), "ltm": -100}
+    payload_encoded = (
+        base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    )
+    token = f"header.{payload_encoded}.signature"
+
+    with pytest.raises(
+        EgaugeParsingException, match="JWT 'ltm' \\(lifetime\\) must be positive"
+    ):
+        JwtAuthManager._parse_jwt_expiry(token)
+
+
+def test_parse_jwt_expiry_zero_lifetime():
+    """Test that zero lifetime raises EgaugeParsingException"""
+    from egauge_async.exceptions import EgaugeParsingException
+
+    payload = {"beg": int(time.time()), "ltm": 0}
+    payload_encoded = (
+        base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    )
+    token = f"header.{payload_encoded}.signature"
+
+    with pytest.raises(
+        EgaugeParsingException, match="JWT 'ltm' \\(lifetime\\) must be positive"
+    ):
+        JwtAuthManager._parse_jwt_expiry(token)
+
+
+def test_parse_jwt_expiry_excessive_lifetime():
+    """Test that lifetime > 24 hours raises EgaugeParsingException"""
+    from egauge_async.exceptions import EgaugeParsingException
+
+    payload = {"beg": int(time.time()), "ltm": 86401}  # 24 hours + 1 second
+    payload_encoded = (
+        base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    )
+    token = f"header.{payload_encoded}.signature"
+
+    with pytest.raises(
+        EgaugeParsingException, match="JWT 'ltm' \\(lifetime\\) is too long"
+    ):
+        JwtAuthManager._parse_jwt_expiry(token)
+
+
+def test_parse_jwt_expiry_already_expired():
+    """Test that already expired token raises EgaugeParsingException"""
+    from egauge_async.exceptions import EgaugeParsingException
+
+    # Token that expired 10 seconds ago
+    payload = {"beg": int(time.time() - 610), "ltm": 600}
+    payload_encoded = (
+        base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    )
+    token = f"header.{payload_encoded}.signature"
+
+    with pytest.raises(EgaugeParsingException, match="JWT already expired"):
+        JwtAuthManager._parse_jwt_expiry(token)
+
+
+def test_parse_jwt_expiry_malformed_token():
+    """Test that malformed JWT raises EgaugeParsingException"""
+    from egauge_async.exceptions import EgaugeParsingException
+
+    with pytest.raises(
+        EgaugeParsingException,
+        match="Malformed JWT: token must have at least 2 segments",
+    ):
+        JwtAuthManager._parse_jwt_expiry("not_a_valid_token")
+
+
+def test_parse_jwt_expiry_string_numeric_values():
+    """Test that string numeric values are properly converted"""
+    # Some implementations might return strings for numeric values
+    payload = {"beg": str(int(time.time())), "ltm": "600"}
+    payload_encoded = (
+        base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
+    )
+    token = f"header.{payload_encoded}.signature"
+
+    expiry = JwtAuthManager._parse_jwt_expiry(token)
+    expected_expiry = time.time() + 600
+    assert abs(expiry - expected_expiry) < 2  # Allow 2 second tolerance
 
 
 # Test _fetch_nonce()
@@ -185,7 +340,7 @@ async def test_perform_login_invalid_credentials():
 @pytest.mark.asyncio
 async def test_get_token_lazy_authentication():
     """Test that get_token() authenticates on first call"""
-    test_jwt = create_test_jwt()
+    test_jwt = create_egauge_jwt()
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler(
@@ -218,7 +373,7 @@ async def test_get_token_lazy_authentication():
 @pytest.mark.asyncio
 async def test_get_token_caching():
     """Test that get_token() returns cached token on subsequent calls"""
-    test_jwt = create_test_jwt()
+    test_jwt = create_egauge_jwt()
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler(

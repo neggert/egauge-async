@@ -13,35 +13,29 @@ from egauge_async.exceptions import (
 )
 from egauge_async.json.auth import JwtAuthManager, _TokenState
 from egauge_async.json.client import EgaugeJsonClient
-from mocks import MultiResponseClient, MockAsyncClient
+from mocks import MultiResponseClient, MockAsyncClient, create_egauge_jwt
 
 
 # Test JWT parsing
 def test_parse_jwt_expiry_valid_token():
     """Test parsing expiration from a valid JWT"""
-    # Create a JWT with exp claim
-    exp_time = time.time() + 600  # 10 minutes from now
-    payload = {"sub": "owner", "exp": int(exp_time)}
-    payload_encoded = (
-        base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
-    )
-    token = f"header.{payload_encoded}.signature"
-
+    token = create_egauge_jwt(lifetime_seconds=600)
     result = JwtAuthManager._parse_jwt_expiry(token)
 
     assert result is not None
-    assert abs(result - exp_time) < 1  # Allow for rounding
+    expected_expiry = time.time() + 600
+    assert abs(result - expected_expiry) < 2  # Allow for timing
 
 
 def test_parse_jwt_expiry_missing_exp():
-    """Test parsing JWT without exp claim raises exception"""
+    """Test parsing JWT without beg/ltm claims raises exception"""
     payload = {"sub": "owner", "iat": int(time.time())}
     payload_encoded = (
         base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
     )
     token = f"header.{payload_encoded}.signature"
 
-    with pytest.raises(EgaugeParsingException, match="missing 'exp'"):
+    with pytest.raises(EgaugeParsingException, match="missing 'beg'"):
         JwtAuthManager._parse_jwt_expiry(token)
 
 
@@ -60,22 +54,21 @@ def test_parse_jwt_expiry_invalid_base64():
 
 
 def test_parse_jwt_expiry_exp_in_past():
-    """Test parsing JWT with exp in the past raises exception"""
-    exp_time = time.time() - 100  # Already expired
-    payload = {"sub": "owner", "exp": int(exp_time)}
+    """Test parsing JWT that's already expired raises exception"""
+    # Token that expired 10 seconds ago (beg was 610 seconds ago, ltm was 600)
+    payload = {"beg": int(time.time() - 610), "ltm": 600}
     payload_encoded = (
         base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
     )
     token = f"header.{payload_encoded}.signature"
 
-    with pytest.raises(EgaugeParsingException, match="is in the past"):
+    with pytest.raises(EgaugeParsingException, match="already expired"):
         JwtAuthManager._parse_jwt_expiry(token)
 
 
 def test_parse_jwt_expiry_with_padding():
     """Test parsing JWT that needs base64 padding"""
-    exp_time = time.time() + 600
-    payload = {"exp": int(exp_time)}
+    payload = {"beg": int(time.time()), "ltm": 600}
     # Create payload that needs padding (length not multiple of 4)
     payload_encoded = (
         base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
@@ -85,7 +78,8 @@ def test_parse_jwt_expiry_with_padding():
     result = JwtAuthManager._parse_jwt_expiry(token)
 
     assert result is not None
-    assert abs(result - exp_time) < 1
+    expected_expiry = time.time() + 600
+    assert abs(result - expected_expiry) < 2
 
 
 # Test token validity checking
@@ -143,13 +137,7 @@ def test_is_token_valid_valid_token():
 @pytest.mark.asyncio
 async def test_get_token_refreshes_near_expiry():
     """Test that get_token() refreshes token when near expiration"""
-    # Create new JWT with valid exp
-    exp_time = time.time() + 600
-    payload = {"sub": "owner", "exp": int(exp_time)}
-    payload_encoded = (
-        base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
-    )
-    new_jwt = f"header.{payload_encoded}.signature"
+    new_jwt = create_egauge_jwt(lifetime_seconds=600)
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler(
@@ -213,14 +201,7 @@ async def test_get_token_no_refresh_when_valid():
 @pytest.mark.asyncio
 async def test_concurrent_get_token_single_refresh():
     """Test that concurrent get_token() calls trigger only one refresh"""
-
-    # Create new JWT with valid exp
-    exp_time = time.time() + 600
-    payload = {"sub": "owner", "exp": int(exp_time)}
-    payload_encoded = (
-        base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
-    )
-    refreshed_jwt = f"header.{payload_encoded}.signature"
+    refreshed_jwt = create_egauge_jwt(lifetime_seconds=600)
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler(
@@ -327,13 +308,7 @@ async def test_client_401_triggers_refresh_and_retry():
 
         raise ValueError(f"Unexpected URL: {url}")
 
-    # Create new JWT with valid exp
-    exp_time = time.time() + 600
-    payload = {"sub": "owner", "exp": int(exp_time)}
-    payload_encoded = (
-        base64.urlsafe_b64encode(json.dumps(payload).encode()).decode().rstrip("=")
-    )
-    new_jwt = f"header.{payload_encoded}.signature"
+    new_jwt = create_egauge_jwt(lifetime_seconds=600)
 
     mock_client = MultiResponseClient()
     mock_client.get = get_handler

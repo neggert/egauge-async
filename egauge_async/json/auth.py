@@ -54,13 +54,15 @@ class JwtAuthManager:
             token: JWT token string (header.payload.signature format)
 
         Returns:
-            Unix timestamp of expiration
+            Unix timestamp of expiration (calculated as beg + ltm)
 
         Raises:
-            EgaugeParsingException: If JWT is malformed or missing exp claim
+            EgaugeParsingException: If JWT is malformed or missing required fields
 
         Notes:
-            Does not validate signature, only extracts exp claim.
+            eGauge JWTs use 'beg' (begin timestamp) and 'ltm' (lifetime in seconds)
+            instead of the standard 'exp' field. Expiration is calculated as beg + ltm.
+            Does not validate signature, only extracts claims.
             Uses base64 decoding without external dependencies.
         """
         try:
@@ -80,31 +82,65 @@ class JwtAuthManager:
             payload_decoded = base64.urlsafe_b64decode(payload_encoded)
             payload_json = json.loads(payload_decoded)
 
-            exp = payload_json.get("exp")
-            if exp is None:
-                raise EgaugeParsingException("JWT missing 'exp' (expiration) claim")
+            # eGauge uses 'beg' (begin) and 'ltm' (lifetime) instead of 'exp'
+            beg = payload_json.get("beg")
+            ltm = payload_json.get("ltm")
+
+            if beg is None:
+                raise EgaugeParsingException(
+                    "JWT missing 'beg' (begin timestamp) claim"
+                )
+
+            if ltm is None:
+                raise EgaugeParsingException("JWT missing 'ltm' (lifetime) claim")
 
             # Convert string to number if needed
-            if isinstance(exp, str):
-                exp = float(exp)
+            if isinstance(beg, str):
+                try:
+                    beg = float(beg)
+                except ValueError:
+                    raise EgaugeParsingException(
+                        f"JWT 'beg' claim must be numeric, got invalid string: '{beg}'"
+                    )
+            if isinstance(ltm, str):
+                try:
+                    ltm = float(ltm)
+                except ValueError:
+                    raise EgaugeParsingException(
+                        f"JWT 'ltm' claim must be numeric, got invalid string: '{ltm}'"
+                    )
 
-            if not isinstance(exp, (int, float)):
+            if not isinstance(beg, (int, float)):
                 raise EgaugeParsingException(
-                    f"JWT 'exp' claim must be numeric, got {type(exp).__name__}"
+                    f"JWT 'beg' claim must be numeric, got {type(beg).__name__}"
                 )
 
-            # Validate range (must be reasonable timestamp)
+            if not isinstance(ltm, (int, float)):
+                raise EgaugeParsingException(
+                    f"JWT 'ltm' claim must be numeric, got {type(ltm).__name__}"
+                )
+
+            # Validate lifetime is reasonable (positive and not excessive)
+            if ltm <= 0:
+                raise EgaugeParsingException(
+                    f"JWT 'ltm' (lifetime) must be positive, got {ltm}"
+                )
+            if ltm > 86400:  # More than 24 hours
+                raise EgaugeParsingException(
+                    f"JWT 'ltm' (lifetime) is too long (more than 24 hours): {ltm}"
+                )
+
+            # Calculate expiration timestamp
+            expiry = beg + ltm
+
+            # Validate the calculated expiry is in the future
             now = time.time()
-            if exp < now:
+            if expiry < now:
                 raise EgaugeParsingException(
-                    "JWT 'exp' claim is in the past (token already expired)"
-                )
-            if exp > now + 86400:  # Not within next 24 hours
-                raise EgaugeParsingException(
-                    "JWT 'exp' claim is too far in the future (more than 24 hours)"
+                    f"JWT already expired (beg={beg}, ltm={ltm}, expiry={expiry}, now={now})"
                 )
 
-            return float(exp)
+            return float(expiry)
 
         except (ValueError, json.JSONDecodeError) as e:
             raise EgaugeParsingException(f"Failed to decode JWT payload: {e}")
