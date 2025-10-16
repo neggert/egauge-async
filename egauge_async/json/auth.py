@@ -149,11 +149,15 @@ class JwtAuthManager:
 
         Raises:
             EgaugeAuthenticationError: If the request fails
+
+        Notes:
+            The /auth/unauthorized endpoint returns 401 status code by design,
+            providing nonce data in the response body for digest authentication.
         """
         url = f"{self.base_url}/auth/unauthorized"
         response = await self.client.get(url)
 
-        if response.status_code != 200:
+        if response.status_code != 401:
             raise EgaugeAuthenticationError(
                 f"Failed to fetch nonce: HTTP {response.status_code}"
             )

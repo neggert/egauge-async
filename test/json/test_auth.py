@@ -91,7 +91,7 @@ async def test_fetch_nonce_success():
         "error": "Authentication required.",
     }
     mock_client = MockAsyncClient(
-        "https://egauge12345.local/auth/unauthorized", response_data
+        "https://egauge12345.local/auth/unauthorized", response_data, status_code=401
     )
 
     handler = JwtAuthManager(
@@ -195,6 +195,7 @@ async def test_get_token_lazy_authentication():
             "nnc": "server_nonce_123",
             "error": "Authentication required.",
         },
+        status_code=401,
     )
     mock_client.add_post_handler("/auth/login", {"jwt": test_jwt})
 
@@ -227,6 +228,7 @@ async def test_get_token_caching():
             "nnc": "server_nonce_123",
             "error": "Authentication required.",
         },
+        status_code=401,
     )
     mock_client.add_post_handler("/auth/login", {"jwt": test_jwt})
 

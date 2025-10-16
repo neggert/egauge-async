@@ -155,6 +155,7 @@ async def test_get_token_refreshes_near_expiry():
     mock_client.add_get_handler(
         "/auth/unauthorized",
         {"rlm": "eGauge", "nnc": "nonce123", "error": "Auth required"},
+        status_code=401,
     )
     mock_client.add_post_handler("/auth/login", {"jwt": new_jwt})
 
@@ -225,6 +226,7 @@ async def test_concurrent_get_token_single_refresh():
     mock_client.add_get_handler(
         "/auth/unauthorized",
         {"rlm": "eGauge", "nnc": "nonce", "error": "Auth required"},
+        status_code=401,
     )
     mock_client.add_post_handler("/auth/login", {"jwt": refreshed_jwt})
 
@@ -305,7 +307,7 @@ async def test_client_401_triggers_refresh_and_retry():
                 json_module.dumps(
                     {"rlm": "eGauge", "nnc": "nonce", "error": "Auth required"}
                 ),
-                200,
+                401,
             )
 
         # Handle register endpoint
@@ -363,14 +365,29 @@ async def test_client_double_401_raises_error():
     import json as json_module
     from mocks import MockResponse
 
-    # Create a handler that ALWAYS returns 401 for all requests
-    async def always_401_handler(url, **kwargs):
-        """Mock handler that always returns 401"""
+    # Create a handler that returns nonce but login fails with 401
+    async def handler_with_failed_login(url, **kwargs):
+        """Mock handler that provides nonce but fails login"""
+        if "/auth/unauthorized" in url:
+            # Return proper nonce response with 401
+            return MockResponse(
+                json_module.dumps(
+                    {"rlm": "eGauge", "nnc": "nonce", "error": "Auth required"}
+                ),
+                401,
+            )
+        # For any other request (including /register), return 401 error
         return MockResponse(json_module.dumps({"error": "Invalid credentials"}), 401)
 
+    async def failed_post_handler(url, **kwargs):
+        """Mock POST handler that always fails with 400 for invalid credentials"""
+        return MockResponse(json_module.dumps({"error": "Invalid credentials"}), 400)
+
     mock_client = MultiResponseClient()
-    # Override get to always return 401
-    mock_client.get = always_401_handler
+    # Override get to handle nonce and register requests
+    mock_client.get = handler_with_failed_login
+    # Override post to fail login attempts
+    mock_client.post = failed_post_handler
 
     auth = JwtAuthManager("https://egauge.local", "owner", "password", mock_client)
 
@@ -399,6 +416,7 @@ async def test_authentication_fails_with_invalid_jwt():
     mock_client.add_get_handler(
         "/auth/unauthorized",
         {"rlm": "eGauge", "nnc": "nonce", "error": "Auth required"},
+        status_code=401,
     )
     # Return a JWT with invalid base64 payload
     mock_client.add_post_handler(
