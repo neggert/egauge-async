@@ -239,14 +239,16 @@ def test_parse_jwt_expiry_string_numeric_values():
 # Test _fetch_nonce()
 @pytest.mark.asyncio
 async def test_fetch_nonce_success():
-    """Test successfully fetching server nonce from /auth/unauthorized"""
+    """Test successfully fetching server nonce from /api/auth/unauthorized"""
     response_data = {
         "rlm": "eGauge Administration",
         "nnc": "eyJ0eXAiJkpXVCJ9.eyJzdWIi.w5GCvM",
         "error": "Authentication required.",
     }
     mock_client = MockAsyncClient(
-        "https://egauge12345.local/auth/unauthorized", response_data, status_code=401
+        "https://egauge12345.local/api/auth/unauthorized",
+        response_data,
+        status_code=401,
     )
 
     handler = JwtAuthManager(
@@ -266,7 +268,9 @@ async def test_fetch_nonce_error():
     """Test handling of error response when fetching nonce"""
     response_data = {"error": "Service unavailable"}
     mock_client = MockAsyncClient(
-        "https://egauge12345.local/auth/unauthorized", response_data, status_code=503
+        "https://egauge12345.local/api/auth/unauthorized",
+        response_data,
+        status_code=503,
     )
 
     handler = JwtAuthManager(
@@ -290,7 +294,9 @@ async def test_perform_login_success():
     response_data = {
         "jwt": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.abcdef"
     }
-    mock_client = MockAsyncClient("https://egauge12345.local/auth/login", response_data)
+    mock_client = MockAsyncClient(
+        "https://egauge12345.local/api/auth/login", response_data
+    )
 
     handler = JwtAuthManager(
         "https://egauge12345.local", "owner", "testpass", mock_client
@@ -316,23 +322,54 @@ async def test_perform_login_success():
 
 @pytest.mark.asyncio
 async def test_perform_login_invalid_credentials():
-    """Test login failure with invalid credentials"""
+    """Test login failure with invalid credentials (eGauge returns 200 with error field)"""
     nonce_response = NonceResponse(
         realm="eGauge Administration",
         nonce="server_nonce_123",
         error="Authentication required.",
     )
 
+    # eGauge returns 200 status with error field for bad credentials
     response_data = {"error": "Invalid credentials"}
     mock_client = MockAsyncClient(
-        "https://egauge12345.local/auth/login", response_data, status_code=400
+        "https://egauge12345.local/api/auth/login", response_data, status_code=200
     )
 
     handler = JwtAuthManager(
         "https://egauge12345.local", "owner", "wrongpass", mock_client
     )
 
-    with pytest.raises(EgaugeAuthenticationError):
+    with pytest.raises(
+        EgaugeAuthenticationError, match="Login failed: Invalid credentials"
+    ):
+        await handler._perform_login(nonce_response)
+
+
+@pytest.mark.asyncio
+async def test_perform_login_malformed_response():
+    """Test login with malformed response (no jwt and no error field)"""
+    from egauge_async.exceptions import EgaugeParsingException
+
+    nonce_response = NonceResponse(
+        realm="eGauge Administration",
+        nonce="server_nonce_123",
+        error="Authentication required.",
+    )
+
+    # Malformed response: missing both jwt and error fields
+    response_data = {"some_other_field": "unexpected"}
+    mock_client = MockAsyncClient(
+        "https://egauge12345.local/api/auth/login", response_data, status_code=200
+    )
+
+    handler = JwtAuthManager(
+        "https://egauge12345.local", "owner", "password", mock_client
+    )
+
+    with pytest.raises(
+        EgaugeParsingException,
+        match="Login response missing both 'jwt' and 'error' fields",
+    ):
         await handler._perform_login(nonce_response)
 
 
@@ -344,7 +381,7 @@ async def test_get_token_lazy_authentication():
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler(
-        "/auth/unauthorized",
+        "/api/auth/unauthorized",
         {
             "rlm": "eGauge Administration",
             "nnc": "server_nonce_123",
@@ -352,7 +389,7 @@ async def test_get_token_lazy_authentication():
         },
         status_code=401,
     )
-    mock_client.add_post_handler("/auth/login", {"jwt": test_jwt})
+    mock_client.add_post_handler("/api/auth/login", {"jwt": test_jwt})
 
     handler = JwtAuthManager(
         "https://egauge12345.local", "owner", "password", mock_client
@@ -377,7 +414,7 @@ async def test_get_token_caching():
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler(
-        "/auth/unauthorized",
+        "/api/auth/unauthorized",
         {
             "rlm": "eGauge Administration",
             "nnc": "server_nonce_123",
@@ -385,7 +422,7 @@ async def test_get_token_caching():
         },
         status_code=401,
     )
-    mock_client.add_post_handler("/auth/login", {"jwt": test_jwt})
+    mock_client.add_post_handler("/api/auth/login", {"jwt": test_jwt})
 
     handler = JwtAuthManager(
         "https://egauge12345.local", "owner", "password", mock_client
@@ -431,7 +468,7 @@ async def test_logout_success():
 
     response_data = {"status": "Token revoked successfully"}
     mock_client = MockAsyncClient(
-        "https://egauge12345.local/auth/logout", response_data
+        "https://egauge12345.local/api/auth/logout", response_data
     )
 
     handler = JwtAuthManager(
@@ -448,7 +485,7 @@ async def test_logout_success():
 
     # Token state should be cleared
     assert handler._token_state is None
-    # Should have made a GET request to /auth/logout
+    # Should have made a GET request to /api/auth/logout
     assert len(mock_client.calls) == 1
     assert mock_client.calls[0][0] == "GET"
 
@@ -458,7 +495,7 @@ async def test_logout_when_not_authenticated():
     """Test logout when no token is set (should call server but not error)"""
     response_data = {"status": "OK"}
     mock_client = MockAsyncClient(
-        "https://egauge12345.local/auth/logout", response_data
+        "https://egauge12345.local/api/auth/logout", response_data
     )
     handler = JwtAuthManager(
         "https://egauge12345.local", "owner", "password", mock_client

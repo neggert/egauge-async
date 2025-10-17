@@ -83,7 +83,7 @@ class EgaugeJsonClient:
         if self._register_cache is not None:
             return self._register_cache
 
-        url = f"{self.base_url}/register"
+        url = f"{self.base_url}/api/register"
         response = await self._get_with_auth(url)
         response.raise_for_status()
 
@@ -126,7 +126,7 @@ class EgaugeJsonClient:
         Returns:
             Dictionary mapping register name to current rate value (already in physical units)
         """
-        url = f"{self.base_url}/register"
+        url = f"{self.base_url}/api/register"
         params: dict[str, str] = {"rate": ""}
 
         # Filter to specific registers if requested
@@ -190,7 +190,7 @@ class EgaugeJsonClient:
             - "ts": datetime (timestamp)
             - Register names mapped to physical cumulative values (float, in rate_unit·seconds)
         """
-        url = f"{self.base_url}/register"
+        url = f"{self.base_url}/api/register"
 
         # Convert datetimes to Unix timestamps
         start_ts = int(start_time.timestamp())

@@ -141,11 +141,11 @@ async def test_get_token_refreshes_near_expiry():
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler(
-        "/auth/unauthorized",
+        "/api/auth/unauthorized",
         {"rlm": "eGauge", "nnc": "nonce123", "error": "Auth required"},
         status_code=401,
     )
-    mock_client.add_post_handler("/auth/login", {"jwt": new_jwt})
+    mock_client.add_post_handler("/api/auth/login", {"jwt": new_jwt})
 
     auth = JwtAuthManager(
         "https://egauge.local",
@@ -205,11 +205,11 @@ async def test_concurrent_get_token_single_refresh():
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler(
-        "/auth/unauthorized",
+        "/api/auth/unauthorized",
         {"rlm": "eGauge", "nnc": "nonce", "error": "Auth required"},
         status_code=401,
     )
-    mock_client.add_post_handler("/auth/login", {"jwt": refreshed_jwt})
+    mock_client.add_post_handler("/api/auth/login", {"jwt": refreshed_jwt})
 
     auth = JwtAuthManager(
         "https://egauge.local",
@@ -283,7 +283,7 @@ async def test_client_401_triggers_refresh_and_retry():
         nonlocal register_call_count
 
         # Handle auth endpoints
-        if "/auth/unauthorized" in url:
+        if "/api/auth/unauthorized" in url:
             return MockResponse(
                 json_module.dumps(
                     {"rlm": "eGauge", "nnc": "nonce", "error": "Auth required"}
@@ -292,7 +292,7 @@ async def test_client_401_triggers_refresh_and_retry():
             )
 
         # Handle register endpoint
-        if "/register" in url:
+        if "/api/register" in url:
             register_call_count += 1
             if register_call_count == 1:
                 # First call: return 401
@@ -312,7 +312,7 @@ async def test_client_401_triggers_refresh_and_retry():
 
     mock_client = MultiResponseClient()
     mock_client.get = get_handler
-    mock_client.add_post_handler("/auth/login", {"jwt": new_jwt})
+    mock_client.add_post_handler("/api/auth/login", {"jwt": new_jwt})
 
     auth = JwtAuthManager("https://egauge.local", "owner", "password", mock_client)
 
@@ -328,7 +328,7 @@ async def test_client_401_triggers_refresh_and_retry():
     )
 
     # Make request - should succeed after retry
-    response = await client._get_with_auth("https://egauge.local/register")
+    response = await client._get_with_auth("https://egauge.local/api/register")
 
     assert response.status_code == 200
     assert register_call_count == 2  # Initial request + retry
@@ -343,7 +343,7 @@ async def test_client_double_401_raises_error():
     # Create a handler that returns nonce but login fails with 401
     async def handler_with_failed_login(url, **kwargs):
         """Mock handler that provides nonce but fails login"""
-        if "/auth/unauthorized" in url:
+        if "/api/auth/unauthorized" in url:
             # Return proper nonce response with 401
             return MockResponse(
                 json_module.dumps(
@@ -380,7 +380,7 @@ async def test_client_double_401_raises_error():
     # Should raise after second 401
     # The error will be different since both the request AND the refresh will get 401
     with pytest.raises(EgaugeAuthenticationError):
-        await client._get_with_auth("https://egauge.local/register")
+        await client._get_with_auth("https://egauge.local/api/register")
 
 
 # Test JWT parsing failure raises exception
@@ -389,13 +389,13 @@ async def test_authentication_fails_with_invalid_jwt():
     """Test that authentication raises exception when JWT parsing fails"""
     mock_client = MultiResponseClient()
     mock_client.add_get_handler(
-        "/auth/unauthorized",
+        "/api/auth/unauthorized",
         {"rlm": "eGauge", "nnc": "nonce", "error": "Auth required"},
         status_code=401,
     )
     # Return a JWT with invalid base64 payload
     mock_client.add_post_handler(
-        "/auth/login", {"jwt": "header.!!!invalid!!.signature"}
+        "/api/auth/login", {"jwt": "header.!!!invalid!!.signature"}
     )
 
     auth = JwtAuthManager("https://egauge.local", "owner", "password", mock_client)

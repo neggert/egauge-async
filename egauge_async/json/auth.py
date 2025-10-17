@@ -178,7 +178,7 @@ class JwtAuthManager:
         return hashlib.md5(f"{ha1}:{server_nonce}:{client_nonce}".encode()).hexdigest()
 
     async def _fetch_nonce(self) -> NonceResponse:
-        """Fetch server nonce from /auth/unauthorized endpoint
+        """Fetch server nonce from /api/auth/unauthorized endpoint
 
         Returns:
             NonceResponse containing realm and server nonce
@@ -187,10 +187,10 @@ class JwtAuthManager:
             EgaugeAuthenticationError: If the request fails
 
         Notes:
-            The /auth/unauthorized endpoint returns 401 status code by design,
+            The /api/auth/unauthorized endpoint returns 401 status code by design,
             providing nonce data in the response body for digest authentication.
         """
-        url = f"{self.base_url}/auth/unauthorized"
+        url = f"{self.base_url}/api/auth/unauthorized"
         response = await self.client.get(url)
 
         if response.status_code != 401:
@@ -247,7 +247,7 @@ class JwtAuthManager:
             hash=digest_hash,
         )
 
-        url = f"{self.base_url}/auth/login"
+        url = f"{self.base_url}/api/auth/login"
         response = await self.client.post(
             url,
             json={
@@ -266,6 +266,17 @@ class JwtAuthManager:
             )
 
         data = response.json()
+
+        # Check for error in response (eGauge returns 200 with error field for bad credentials)
+        if "error" in data:
+            raise EgaugeAuthenticationError(f"Login failed: {data['error']}")
+
+        # Verify JWT is present (if no error and no jwt, response is malformed)
+        if "jwt" not in data:
+            raise EgaugeParsingException(
+                "Login response missing both 'jwt' and 'error' fields"
+            )
+
         return AuthResponse(jwt=data["jwt"], error=data.get("error"))
 
     async def get_token(self) -> str:
@@ -352,7 +363,7 @@ class JwtAuthManager:
         await self.invalidate_token()
 
         # Notify server
-        url = f"{self.base_url}/auth/logout"
+        url = f"{self.base_url}/api/auth/logout"
         response = await self.client.get(url)
 
         if response.status_code != 200:
