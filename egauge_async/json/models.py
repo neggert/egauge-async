@@ -63,17 +63,6 @@ class NonceResponse:
 
 
 @dataclass
-class LoginRequest:
-    """Request body for /auth/login endpoint using digest authentication"""
-
-    rlm: str
-    usr: str
-    nnc: str
-    cnnc: str
-    hash: str
-
-
-@dataclass
 class AuthResponse:
     """Response from /auth/login endpoint containing JWT token"""
 

@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import httpx
 
 from egauge_async.exceptions import EgaugeAuthenticationError, EgaugeParsingException
-from egauge_async.json.models import NonceResponse, LoginRequest, AuthResponse
+from egauge_async.json.models import NonceResponse, AuthResponse
 
 
 @dataclass
@@ -239,23 +239,15 @@ class JwtAuthManager:
             client_nonce,
         )
 
-        login_request = LoginRequest(
-            rlm=nonce_response.realm,
-            usr=self.username,
-            nnc=nonce_response.nonce,
-            cnnc=client_nonce,
-            hash=digest_hash,
-        )
-
         url = f"{self.base_url}/api/auth/login"
         response = await self.client.post(
             url,
             json={
-                "rlm": login_request.rlm,
-                "usr": login_request.usr,
-                "nnc": login_request.nnc,
-                "cnnc": login_request.cnnc,
-                "hash": login_request.hash,
+                "rlm": nonce_response.realm,
+                "usr": self.username,
+                "nnc": nonce_response.nonce,
+                "cnnc": client_nonce,
+                "hash": digest_hash,
             },
         )
 
