@@ -24,7 +24,59 @@ uv run pytest test/test_client.py
 
 # Run a specific test
 uv run pytest test/test_client.py::test_get_instantaneous_data
+
+# Run only unit tests (exclude integration tests)
+uv run pytest -m "not integration"
+
+# Run only integration tests (requires real eGauge device)
+uv run pytest -m integration
 ```
+
+### Integration Testing
+
+Integration tests run against a real eGauge device to validate end-to-end functionality. These tests are located in `test/json/test_json_client_integration.py` and marked with `@pytest.mark.integration`.
+
+#### Setup
+
+Before running integration tests, set these environment variables:
+
+```bash
+export EGAUGE_URL="https://egauge12345.local"  # Your eGauge device URL
+export EGAUGE_USERNAME="owner"                 # Username for authentication
+export EGAUGE_PASSWORD="your_password"         # Device password
+```
+
+#### Running Integration Tests
+
+```bash
+# Run all integration tests
+uv run pytest -m integration
+
+# Run specific integration test
+uv run pytest -m integration -k "test_auth_successful_login"
+
+# Run with verbose output
+uv run pytest -m integration -v
+```
+
+#### Integration Test Coverage
+
+The integration test suite validates:
+
+- **Authentication & Token Management**: Login, token caching, token refresh, concurrent requests
+- **Register Information**: Metadata fetching, caching, data structure validation
+- **Current Measurements**: All registers, filtered queries, error handling
+- **Historical Data**: Time-range queries, register filtering, quantum conversion, timestamp ordering
+- **Error Handling**: Invalid credentials, unknown registers, token invalidation recovery
+- **Data Consistency**: Register name consistency across endpoints
+
+#### Notes
+
+- Integration tests automatically skip if environment variables are not set
+- Tests use SSL verification disabled (eGauges use self-signed certificates)
+- Tests are read-only and do not modify device state
+- Tests work with any eGauge device without assumptions about specific registers
+- Default test runs (`pytest`) exclude integration tests; use `-m integration` to run them
 
 ### Code Quality
 ```bash

@@ -39,3 +39,8 @@ fallback-version = "0.0.0"
 [tool.pyright]
 include = ["egauge_async"]
 typeCheckingMode = "strict"
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests (run against real eGauge device)",
+]
