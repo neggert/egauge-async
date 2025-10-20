@@ -921,6 +921,83 @@ async def test_get_current_counters_unknown_register():
         await client.get_current_counters(registers=["Nonexistent"])
 
 
+@pytest.mark.asyncio
+async def test_get_current_counters_missing_name_field():
+    """Test that missing name field raises EgaugeParsingException."""
+    response_data = {
+        "registers": [{"type": "P", "idx": 17}],  # No name field
+        "ranges": [{"ts": "1678298313.000", "delta": 1, "rows": [["100"]]}],
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/register", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    # Should raise exception since name field is missing
+    with pytest.raises(EgaugeParsingException, match="Register missing 'name' field"):
+        await client.get_current_counters()
+
+
+@pytest.mark.asyncio
+async def test_get_current_counters_missing_type_field():
+    """Test that missing type field raises EgaugeParsingException."""
+    response_data = {
+        "registers": [{"name": "Grid", "idx": 17}],  # No type field
+        "ranges": [{"ts": "1678298313.000", "delta": 1, "rows": [["100"]]}],
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/register", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    # Should raise exception since type field is missing
+    with pytest.raises(
+        EgaugeParsingException, match="Register 'Grid' missing 'type' field"
+    ):
+        await client.get_current_counters()
+
+
+@pytest.mark.asyncio
+async def test_get_current_counters_quantum_conversion():
+    """Test that quantum conversion is applied correctly for different register types."""
+    response_data = {
+        "registers": [
+            {"name": "Grid", "type": "P", "idx": 17},  # Power: quantum=1.0
+            {"name": "Voltage", "type": "V", "idx": 18},  # Voltage: quantum=0.001
+        ],
+        "ranges": [
+            {
+                "ts": "1678298313.000",
+                "delta": 1,
+                "rows": [["5000", "240000"]],  # Raw values
+            }
+        ],
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/register", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    counters = await client.get_current_counters()
+
+    # Grid (Power): 5000 * 1.0 = 5000.0
+    assert counters["Grid"] == 5000.0
+    # Voltage: 240000 * 0.001 = 240.0
+    assert counters["Voltage"] == 240.0
+
+
 # Phase 6: get_user_rights() tests
 @pytest.mark.asyncio
 async def test_get_user_rights_success():
