@@ -3,7 +3,7 @@ from datetime import datetime as dt, timedelta, timezone
 import httpx
 
 from egauge_async.json.auth import JwtAuthManager
-from egauge_async.json.models import RegisterType, RegisterInfo
+from egauge_async.json.models import RegisterType, RegisterInfo, UserRights
 from egauge_async.json.type_codes import get_quantum
 from egauge_async.exceptions import (
     EgaugeUnknownRegisterError,
@@ -291,6 +291,30 @@ class EgaugeJsonClient:
                 result.append(row_dict)
 
         return result
+
+    async def get_user_rights(self) -> UserRights:
+        """Get authenticated user's rights and privileges.
+
+        Returns:
+            UserRights object containing username and list of privileges
+
+        Raises:
+            EgaugeAuthenticationError: If authentication fails
+            EgaugeParsingException: If response format is unexpected
+        """
+        url = f"{self.base_url}/api/auth/rights"
+        response = await self._get_with_auth(url)
+        response.raise_for_status()
+
+        data = response.json()
+
+        # Validate required fields are present
+        if "usr" not in data:
+            raise EgaugeParsingException("User rights response missing 'usr' field")
+        if "rights" not in data:
+            raise EgaugeParsingException("User rights response missing 'rights' field")
+
+        return UserRights(usr=data["usr"], rights=data["rights"])
 
     async def close(self) -> None:
         """Close the client and revoke JWT token.
