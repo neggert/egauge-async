@@ -334,6 +334,84 @@ async def test_current_measurements_data_validity(real_client):
         assert math.isfinite(rate), f"Register {name} has non-finite rate: {rate}"
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_current_counters_all(real_client):
+    """Test fetching current cumulative counter values for all registers."""
+    counters = await real_client.get_current_counters()
+
+    # Should return non-empty dictionary
+    assert isinstance(counters, dict)
+    assert len(counters) > 0
+
+    # Each counter should be a valid float
+    for name, value in counters.items():
+        assert isinstance(name, str)
+        assert len(name) > 0
+        assert isinstance(value, (int, float))
+        assert not isinstance(value, bool)  # bool is subclass of int
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_current_counters_filtered(real_client):
+    """Test fetching counters for specific registers only."""
+    # First get all registers to pick some for filtering
+    all_registers = await real_client.get_register_info()
+    assert len(all_registers) > 0
+
+    # Pick first register for filtered query
+    register_names = list(all_registers.keys())
+    test_register = register_names[0]
+
+    # Fetch counters for just this register
+    counters = await real_client.get_current_counters(registers=[test_register])
+
+    # Should return exactly one counter
+    assert len(counters) == 1
+    assert test_register in counters
+    assert isinstance(counters[test_register], (int, float))
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_current_counters_data_validity(real_client):
+    """Test that current counter values are valid and reasonable."""
+    counters = await real_client.get_current_counters()
+
+    for name, value in counters.items():
+        # Counter value should be a finite number
+        assert isinstance(value, (int, float))
+        assert not isinstance(value, bool)
+
+        # Should not be NaN or infinity
+        assert math.isfinite(value), f"Register {name} has non-finite counter: {value}"
+
+        # Counters are cumulative, so should generally be non-negative
+        # (though some registers like grid import/export can be negative)
+        # Just verify it's a reasonable value (not absurdly large)
+        assert abs(value) < 1e20, f"Register {name} has unreasonable counter: {value}"
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_current_counters_vs_measurements_consistency(real_client):
+    """Test that counters and measurements return data for same registers."""
+    counters = await real_client.get_current_counters()
+    measurements = await real_client.get_current_measurements()
+
+    # Both should return data for the same set of registers
+    # (Though measurements might have fewer if some registers don't have rates)
+    assert len(counters) > 0
+    assert len(measurements) > 0
+
+    # All registers in measurements should also be in counters
+    for reg_name in measurements.keys():
+        assert reg_name in counters, (
+            f"Register {reg_name} has measurement but no counter"
+        )
+
+
 # ============================================================================
 # D. Historical Data Tests
 # ============================================================================
