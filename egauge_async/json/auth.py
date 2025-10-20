@@ -21,6 +21,14 @@ class _TokenState:
     issued_at: float
 
 
+# Constants for token management
+MIN_REFRESH_BUFFER_SECONDS = 1  # Minimum seconds before expiry to refresh
+MAX_REFRESH_BUFFER_SECONDS = (
+    600  # Maximum seconds before expiry to refresh (10 minutes)
+)
+MAX_TOKEN_LIFETIME_SECONDS = 86400  # Maximum expected token lifetime (24 hours)
+
+
 class JwtAuthManager:
     """Handles JWT token authentication for the eGauge JSON API with automatic refresh"""
 
@@ -41,9 +49,14 @@ class JwtAuthManager:
         self._refresh_buffer_seconds = refresh_buffer_seconds
 
         # Validate buffer
-        if not 0 < refresh_buffer_seconds < 600:
+        if (
+            not MIN_REFRESH_BUFFER_SECONDS
+            <= refresh_buffer_seconds
+            < MAX_REFRESH_BUFFER_SECONDS
+        ):
             raise ValueError(
-                f"refresh_buffer_seconds must be between 0 and 600, got {refresh_buffer_seconds}"
+                f"refresh_buffer_seconds must be between {MIN_REFRESH_BUFFER_SECONDS} "
+                f"and {MAX_REFRESH_BUFFER_SECONDS}, got {refresh_buffer_seconds}"
             )
 
     @staticmethod
@@ -125,9 +138,9 @@ class JwtAuthManager:
                 raise EgaugeParsingException(
                     f"JWT 'ltm' (lifetime) must be positive, got {ltm}"
                 )
-            if ltm > 86400:  # More than 24 hours
+            if ltm > MAX_TOKEN_LIFETIME_SECONDS:
                 raise EgaugeParsingException(
-                    f"JWT 'ltm' (lifetime) is too long (more than 24 hours): {ltm}"
+                    f"JWT 'ltm' (lifetime) is too long (more than {MAX_TOKEN_LIFETIME_SECONDS} seconds): {ltm}"
                 )
 
             # Calculate expiration timestamp
