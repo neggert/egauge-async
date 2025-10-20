@@ -357,6 +357,44 @@ class EgaugeJsonClient:
 
         return data["result"]
 
+    async def get_hostname(self) -> str:
+        """Get the configured hostname of the device.
+
+        Returns:
+            Device hostname (ASCII letters, digits, and dashes only)
+
+        Raises:
+            EgaugeAuthenticationError: If authentication fails
+            EgaugePermissionError: If user is authenticated but lacks permission to read configuration
+            EgaugeParsingException: If response format is unexpected
+            httpx.HTTPStatusError: For other HTTP errors
+        """
+        url = f"{self.base_url}/api/config/net/hostname"
+
+        try:
+            response = await self._get_with_auth(url)
+            response.raise_for_status()
+        except EgaugeAuthenticationError as auth_error:
+            # Got 401 after retry - could be auth failure OR permission denied
+            # Try to fetch user rights to distinguish between the two cases
+            try:
+                user_rights = await self.get_user_rights()
+                # If we got here, user is authenticated but lacks permission
+                raise EgaugePermissionError(
+                    f"User '{user_rights.usr}' lacks permission to read device configuration. "
+                    f"This endpoint requires access to network settings."
+                ) from auth_error
+            except EgaugeAuthenticationError:
+                # User rights also failed - credentials are truly invalid
+                raise auth_error
+
+        data = response.json()
+
+        if "result" not in data:
+            raise EgaugeParsingException("Hostname response missing 'result' field")
+
+        return data["result"]
+
     async def close(self) -> None:
         """Close the client and revoke JWT token.
 

@@ -657,3 +657,32 @@ async def test_serial_number_consistent_across_calls(real_client):
 
     # Serial number should be the same every time
     assert serial1 == serial2
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_get_hostname(real_client):
+    """Test fetching device hostname."""
+    hostname = await real_client.get_hostname()
+
+    # Should return a non-empty string
+    assert isinstance(hostname, str)
+    assert len(hostname) > 0
+
+    # Per API spec: hostname consists of ASCII letters, digits, and dashes only
+    # Allow alphanumeric characters and dashes
+    assert all(c.isalnum() or c == "-" for c in hostname), (
+        f"Hostname '{hostname}' contains invalid characters. "
+        f"Expected only ASCII letters, digits, and dashes."
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_hostname_consistent_across_calls(real_client):
+    """Test that hostname is consistent across multiple calls."""
+    hostname1 = await real_client.get_hostname()
+    hostname2 = await real_client.get_hostname()
+
+    # Hostname should be the same every time
+    assert hostname1 == hostname2
