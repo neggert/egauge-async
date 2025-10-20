@@ -194,6 +194,86 @@ class EgaugeJsonClient:
 
         return measurements
 
+    async def get_current_counters(
+        self, registers: list[str] | None = None
+    ) -> dict[str, float]:
+        """Get current cumulative counter values.
+
+        Returns the current state of each register's cumulative counter,
+        representing the total accumulated value since the counter epoch.
+        Values are in physical units (e.g., watt·seconds for power registers).
+
+        Args:
+            registers: List of register names to query. If None, returns all registers.
+
+        Returns:
+            Dictionary mapping register name to current counter value (in rate_unit·seconds)
+
+        Example:
+            # Get all current counters
+            counters = await client.get_current_counters()
+            total_energy = counters["Grid"]  # Total watt-seconds since epoch
+
+            # Get specific counters
+            solar = await client.get_current_counters(["Solar"])
+        """
+        url = f"{self.base_url}/api/register"
+        params: dict[str, str] = {"time": "now"}
+
+        # Filter to specific registers if requested
+        if registers is not None and len(registers) > 0:
+            reg_info = await self.get_register_info()
+            indices: list[int] = []
+            for r in registers:
+                if r not in reg_info:
+                    raise EgaugeUnknownRegisterError(f"Unknown register {r}")
+                indices.append(reg_info[r].idx)
+
+            if indices:
+                reg_param = "none" + "".join(f"+{idx}" for idx in indices)
+                params["reg"] = reg_param
+
+        response = await self._get_with_auth(url, params)
+        response.raise_for_status()
+
+        data = response.json()
+
+        # Extract register metadata
+        registers_list = data.get("registers", [])
+        reg_names: list[str] = []
+        reg_types: list[RegisterType] = []
+
+        for r in registers_list:
+            if "name" not in r:
+                raise EgaugeParsingException(
+                    "Register missing 'name' field in response"
+                )
+            if "type" not in r:
+                raise EgaugeParsingException(
+                    f"Register '{r['name']}' missing 'type' field in response"
+                )
+            reg_names.append(r["name"])
+            reg_types.append(RegisterType(r["type"]))
+
+        # Parse the current values from ranges
+        result: dict[str, float] = {}
+
+        for range_obj in data.get("ranges", []):
+            if "rows" in range_obj and range_obj["rows"]:
+                # Get the first (and only) row
+                row = range_obj["rows"][0]
+
+                # Convert each value with quantum
+                for j, value_str in enumerate(row):
+                    raw_value = int(value_str)
+                    quantum = get_quantum(reg_types[j])
+                    physical_value = raw_value * quantum
+                    result[reg_names[j]] = physical_value
+
+                break  # Only one row expected with time=now
+
+        return result
+
     async def get_historical_counters(
         self,
         start_time: dt,
