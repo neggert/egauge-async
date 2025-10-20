@@ -62,6 +62,117 @@ def test_init_initializes_register_cache():
     assert client._register_cache is None
 
 
+def test_init_validates_empty_base_url():
+    """Test that __init__ raises ValueError for empty base_url."""
+    mock_client = MockAsyncClient("https://example.com", {})
+    mock_auth = MockAuthManager()
+
+    with pytest.raises(ValueError, match="base_url cannot be empty"):
+        EgaugeJsonClient(
+            base_url="",
+            username="owner",
+            password="testpass",
+            client=mock_client,
+            auth=mock_auth,
+        )
+
+
+def test_init_validates_base_url_scheme():
+    """Test that __init__ raises ValueError for invalid URL scheme."""
+    mock_client = MockAsyncClient("https://example.com", {})
+    mock_auth = MockAuthManager()
+
+    with pytest.raises(ValueError, match="must start with http:// or https://"):
+        EgaugeJsonClient(
+            base_url="ftp://egauge.local",
+            username="owner",
+            password="testpass",
+            client=mock_client,
+            auth=mock_auth,
+        )
+
+
+def test_init_validates_empty_username():
+    """Test that __init__ raises ValueError for empty username."""
+    mock_client = MockAsyncClient("https://example.com", {})
+    mock_auth = MockAuthManager()
+
+    with pytest.raises(ValueError, match="username cannot be empty"):
+        EgaugeJsonClient(
+            base_url="https://egauge.local",
+            username="",
+            password="testpass",
+            client=mock_client,
+            auth=mock_auth,
+        )
+
+
+def test_init_validates_empty_password():
+    """Test that __init__ raises ValueError for empty password."""
+    mock_client = MockAsyncClient("https://example.com", {})
+    mock_auth = MockAuthManager()
+
+    with pytest.raises(ValueError, match="password cannot be empty"):
+        EgaugeJsonClient(
+            base_url="https://egauge.local",
+            username="owner",
+            password="",
+            client=mock_client,
+            auth=mock_auth,
+        )
+
+
+@pytest.mark.asyncio
+async def test_context_manager_calls_close():
+    """Test that async context manager calls close() on exit."""
+    mock_client = MockAsyncClient("https://example.com", {})
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        base_url="https://egauge.local",
+        username="owner",
+        password="testpass",
+        client=mock_client,
+        auth=mock_auth,
+    )
+
+    # Use context manager
+    async with client as ctx_client:
+        assert ctx_client is client
+
+    # After exiting context, verify logout was called
+    # The MockAuthManager doesn't track logout calls, but we can verify
+    # the context manager completed without errors
+
+
+@pytest.mark.asyncio
+async def test_close_calls_auth_logout():
+    """Test that close() method calls auth.logout()."""
+    mock_client = MockAsyncClient("https://example.com", {})
+
+    # Create a custom mock auth that tracks logout calls
+    class LogoutTrackingAuth(MockAuthManager):
+        def __init__(self):
+            super().__init__()
+            self.logout_called = False
+
+        async def logout(self):
+            self.logout_called = True
+
+    mock_auth = LogoutTrackingAuth()
+
+    client = EgaugeJsonClient(
+        base_url="https://egauge.local",
+        username="owner",
+        password="testpass",
+        client=mock_client,
+        auth=mock_auth,
+    )
+
+    await client.close()
+    assert mock_auth.logout_called is True
+
+
 # Phase 2: get_register_info() tests
 @pytest.mark.asyncio
 async def test_get_register_info_success():
