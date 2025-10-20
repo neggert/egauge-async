@@ -996,3 +996,132 @@ async def test_get_device_serial_number_authentication_failed():
         EgaugeAuthenticationError, match="Authentication failed after token refresh"
     ):
         await client.get_device_serial_number()
+
+
+# Phase 7: get_hostname() tests
+@pytest.mark.asyncio
+async def test_get_hostname_success():
+    """Test successfully fetching device hostname."""
+    response_data = {"result": "eGauge42", "error": None}
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/config/net/hostname", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    hostname = await client.get_hostname()
+
+    assert hostname == "eGauge42"
+
+
+@pytest.mark.asyncio
+async def test_get_hostname_with_dashes():
+    """Test hostname with dashes (per API spec: ASCII letters, digits, dashes)."""
+    response_data = {"result": "eGauge-Device-123", "error": None}
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/config/net/hostname", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    hostname = await client.get_hostname()
+
+    assert hostname == "eGauge-Device-123"
+
+
+@pytest.mark.asyncio
+async def test_get_hostname_uses_bearer_auth():
+    """Test that get_hostname uses Bearer token authentication."""
+    response_data = {"result": "eGauge42", "error": None}
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/config/net/hostname", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    await client.get_hostname()
+
+    # Verify auth manager was called
+    assert mock_auth.get_token_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_get_hostname_missing_result_field():
+    """Test that missing result field raises EgaugeParsingException."""
+    response_data = {"error": None}  # No result field
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/config/net/hostname", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    # Should raise exception since result field is missing
+    with pytest.raises(
+        EgaugeParsingException, match="Hostname response missing 'result' field"
+    ):
+        await client.get_hostname()
+
+
+@pytest.mark.asyncio
+async def test_get_hostname_permission_denied():
+    """Test that 401 with valid auth raises EgaugePermissionError.
+
+    Scenario: User is authenticated but lacks permission to read network configuration.
+    - /api/config/net/hostname returns 401 (permission denied)
+    - /api/auth/rights succeeds (user is authenticated)
+    - Should raise EgaugePermissionError (not EgaugeAuthenticationError)
+    """
+    # Mock client that returns 401 for hostname but 200 for rights
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/config/net/hostname", {}, status_code=401)
+    mock_client.add_get_handler("/api/auth/rights", {"usr": "guest", "rights": []})
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "guest", "pass", mock_client, mock_auth
+    )
+
+    # Should raise permission error, not authentication error
+    with pytest.raises(
+        EgaugePermissionError,
+        match="User 'guest' lacks permission to read device configuration",
+    ):
+        await client.get_hostname()
+
+
+@pytest.mark.asyncio
+async def test_get_hostname_authentication_failed():
+    """Test that 401 with invalid auth raises EgaugeAuthenticationError.
+
+    Scenario: Invalid credentials - both endpoints return 401.
+    - /api/config/net/hostname returns 401 (authentication failed)
+    - /api/auth/rights also returns 401 (credentials truly invalid)
+    - Should raise EgaugeAuthenticationError
+    """
+    # Mock client that returns 401 for both endpoints
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/config/net/hostname", {}, status_code=401)
+    mock_client.add_get_handler("/api/auth/rights", {}, status_code=401)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "baduser", "badpass", mock_client, mock_auth
+    )
+
+    # Should raise authentication error
+    with pytest.raises(
+        EgaugeAuthenticationError, match="Authentication failed after token refresh"
+    ):
+        await client.get_hostname()
