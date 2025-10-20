@@ -252,7 +252,6 @@ class JwtAuthManager:
         )
 
         if response.status_code != 200:
-            print(response.text)
             raise EgaugeAuthenticationError(
                 f"Login failed: HTTP {response.status_code}"
             )
