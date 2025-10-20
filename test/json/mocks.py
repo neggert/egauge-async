@@ -4,6 +4,7 @@ import base64
 import json
 import time
 from dataclasses import dataclass
+from typing import Any
 
 
 def create_egauge_jwt(lifetime_seconds: int = 600) -> str:
@@ -54,10 +55,10 @@ class MockResponse:
     text: str
     status_code: int
 
-    def json(self):
+    def json(self) -> dict[str, Any]:
         return json.loads(self.text)
 
-    def raise_for_status(self):
+    def raise_for_status(self) -> None:
         """Raise an exception for HTTP error status codes."""
         if self.status_code >= 400:
             raise Exception(f"HTTP {self.status_code}")
@@ -66,18 +67,20 @@ class MockResponse:
 class MockAsyncClient:
     """Mock HTTP client that expects specific URLs and returns canned responses."""
 
-    def __init__(self, expected_url: str, response_json: dict, status_code: int = 200):
+    def __init__(
+        self, expected_url: str, response_json: dict[str, Any], status_code: int = 200
+    ):
         self.expected_url = expected_url
         self.response_json = response_json
         self.status_code = status_code
-        self.calls = []
+        self.calls: list[tuple[str, str, Any]] = []
 
-    async def get(self, url: str, **kwargs):
+    async def get(self, url: str, **kwargs: Any) -> MockResponse:
         self.calls.append(("GET", url, None))
         assert url == self.expected_url, f"Expected URL {self.expected_url}, got {url}"
         return MockResponse(json.dumps(self.response_json), self.status_code)
 
-    async def post(self, url: str, **kwargs):
+    async def post(self, url: str, **kwargs: Any) -> MockResponse:
         json_data = kwargs.get("json")
         self.calls.append(("POST", url, json_data))
         assert url == self.expected_url, f"Expected URL {self.expected_url}, got {url}"
@@ -88,23 +91,23 @@ class MultiResponseClient:
     """Mock HTTP client that returns different responses based on URL patterns."""
 
     def __init__(self):
-        self.calls = []
-        self._get_handlers = {}
-        self._post_handlers = {}
+        self.calls: list[tuple[str, ...]] = []
+        self._get_handlers: dict[str, tuple[dict[str, Any], int]] = {}
+        self._post_handlers: dict[str, tuple[dict[str, Any], int]] = {}
 
     def add_get_handler(
-        self, url_pattern: str, response_json: dict, status_code: int = 200
-    ):
+        self, url_pattern: str, response_json: dict[str, Any], status_code: int = 200
+    ) -> None:
         """Add a handler for GET requests matching the URL pattern."""
         self._get_handlers[url_pattern] = (response_json, status_code)
 
     def add_post_handler(
-        self, url_pattern: str, response_json: dict, status_code: int = 200
-    ):
+        self, url_pattern: str, response_json: dict[str, Any], status_code: int = 200
+    ) -> None:
         """Add a handler for POST requests matching the URL pattern."""
         self._post_handlers[url_pattern] = (response_json, status_code)
 
-    async def get(self, url: str, **kwargs):
+    async def get(self, url: str, **kwargs: Any) -> MockResponse:
         self.calls.append(("GET", url))
 
         for pattern, (response_json, status_code) in self._get_handlers.items():
@@ -113,7 +116,7 @@ class MultiResponseClient:
 
         raise ValueError(f"Unexpected GET: {url}")
 
-    async def post(self, url: str, **kwargs):
+    async def post(self, url: str, **kwargs: Any) -> MockResponse:
         json_data = kwargs.get("json")
         self.calls.append(("POST", url, json_data))
 
@@ -130,8 +133,8 @@ class NeverCalledClient:
     def __init__(self, error_message: str = "Should not be called"):
         self.error_message = error_message
 
-    async def get(self, url: str, **kwargs):
+    async def get(self, url: str, **kwargs: Any) -> MockResponse:
         raise AssertionError(self.error_message)
 
-    async def post(self, url: str, **kwargs):
+    async def post(self, url: str, **kwargs: Any) -> MockResponse:
         raise AssertionError(self.error_message)
