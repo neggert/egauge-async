@@ -768,3 +768,101 @@ async def test_get_historical_counters_missing_type_field():
         EgaugeParsingException, match="Register 'Grid' missing 'type' field"
     ):
         await client.get_historical_counters(start, end, step)
+
+
+# Phase 5: get_user_rights() tests
+@pytest.mark.asyncio
+async def test_get_user_rights_success():
+    """Test successfully fetching user rights."""
+    response_data = {"usr": "owner", "rights": ["save", "ctrl"]}
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/auth/rights", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    user_rights = await client.get_user_rights()
+
+    assert user_rights.usr == "owner"
+    assert user_rights.rights == ["save", "ctrl"]
+
+
+@pytest.mark.asyncio
+async def test_get_user_rights_empty_rights():
+    """Test user with no special rights."""
+    response_data = {"usr": "guest", "rights": []}
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/auth/rights", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    user_rights = await client.get_user_rights()
+
+    assert user_rights.usr == "guest"
+    assert user_rights.rights == []
+
+
+@pytest.mark.asyncio
+async def test_get_user_rights_uses_bearer_auth():
+    """Test that get_user_rights uses Bearer token authentication."""
+    response_data = {"usr": "owner", "rights": ["save"]}
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/auth/rights", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    await client.get_user_rights()
+
+    # Verify auth manager was called
+    assert mock_auth.get_token_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_get_user_rights_missing_usr_field():
+    """Test that missing usr field raises EgaugeParsingException."""
+    response_data = {"rights": ["save", "ctrl"]}  # No usr field
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/auth/rights", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    # Should raise exception since usr field is missing
+    with pytest.raises(
+        EgaugeParsingException, match="User rights response missing 'usr' field"
+    ):
+        await client.get_user_rights()
+
+
+@pytest.mark.asyncio
+async def test_get_user_rights_missing_rights_field():
+    """Test that missing rights field raises EgaugeParsingException."""
+    response_data = {"usr": "owner"}  # No rights field
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/auth/rights", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    # Should raise exception since rights field is missing
+    with pytest.raises(
+        EgaugeParsingException, match="User rights response missing 'rights' field"
+    ):
+        await client.get_user_rights()
