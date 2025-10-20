@@ -771,7 +771,90 @@ async def test_get_historical_counters_missing_type_field():
         await client.get_historical_counters(start, end, step)
 
 
-# Phase 5: get_user_rights() tests
+# Phase 5: get_current_counters() tests
+@pytest.mark.asyncio
+async def test_get_current_counters_all_registers():
+    """Test fetching current counter values for all registers."""
+    response_data = {
+        "registers": [
+            {"name": "Grid", "type": "P", "idx": 17},
+            {"name": "Voltage", "type": "V", "idx": 18},
+        ],
+        "ranges": [
+            {
+                "ts": "1678298313.000",
+                "delta": 1,
+                "rows": [
+                    [
+                        "7494425049",
+                        "120000000",
+                    ]  # Grid=7494425049 W·s, Voltage=120000.0 V·s
+                ],
+            }
+        ],
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/register", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    counters = await client.get_current_counters()
+
+    assert len(counters) == 2
+    assert counters["Grid"] == 7494425049.0  # quantum=1.0 for Power
+    assert counters["Voltage"] == 120000.0  # 120000000 * 0.001 for Voltage
+
+
+@pytest.mark.asyncio
+async def test_get_current_counters_uses_time_now_parameter():
+    """Test that current counters request includes time=now parameter."""
+    response_data = {
+        "registers": [{"name": "Grid", "type": "P", "idx": 17}],
+        "ranges": [{"ts": "1678298313.000", "delta": 1, "rows": [["100"]]}],
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/register", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    counters = await client.get_current_counters()
+
+    # Verify counters were returned correctly
+    assert len(counters) == 1
+    assert counters["Grid"] == 100.0
+
+
+@pytest.mark.asyncio
+async def test_get_current_counters_uses_bearer_auth():
+    """Test that get_current_counters uses Bearer token authentication."""
+    response_data = {
+        "registers": [{"name": "Grid", "type": "P", "idx": 17}],
+        "ranges": [{"ts": "1678298313.000", "delta": 1, "rows": [["100"]]}],
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/register", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    await client.get_current_counters()
+
+    # Verify auth manager was called
+    assert mock_auth.get_token_calls == 1
+
+
+# Phase 6: get_user_rights() tests
 @pytest.mark.asyncio
 async def test_get_user_rights_success():
     """Test successfully fetching user rights."""
