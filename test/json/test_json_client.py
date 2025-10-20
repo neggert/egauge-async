@@ -5,8 +5,31 @@ from datetime import datetime, timedelta, timezone
 
 from egauge_async.json.client import EgaugeJsonClient
 from egauge_async.json.models import RegisterType
-from egauge_async.exceptions import EgaugeUnknownRegisterError, EgaugeParsingException
+from egauge_async.exceptions import (
+    EgaugeUnknownRegisterError,
+    EgaugeParsingException,
+    EgaugePermissionError,
+)
 from mocks import MockAsyncClient, MultiResponseClient, MockAuthManager
+
+
+# Phase 0: Exception tests
+def test_permission_error_can_be_raised():
+    """Test that EgaugePermissionError can be raised and caught."""
+    with pytest.raises(EgaugePermissionError, match="Permission denied"):
+        raise EgaugePermissionError("Permission denied")
+
+
+def test_permission_error_inherits_from_egauge_exception():
+    """Test that EgaugePermissionError is an EgaugeException."""
+    from egauge_async.exceptions import EgaugeException
+
+    try:
+        raise EgaugePermissionError("test error")
+    except EgaugeException:
+        pass  # Should catch as EgaugeException
+    except Exception:
+        pytest.fail("EgaugePermissionError should inherit from EgaugeException")
 
 
 # Phase 1: Initialization tests
