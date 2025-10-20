@@ -123,6 +123,25 @@ def test_init_validates_empty_password():
 
 
 @pytest.mark.asyncio
+async def test_close_calls_auth_logout():
+    """Test that close() method calls auth.logout()."""
+    mock_client = MockAsyncClient("https://example.com", {})
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        base_url="https://egauge.local",
+        username="owner",
+        password="testpass",
+        client=mock_client,
+        auth=mock_auth,
+    )
+
+    assert mock_auth.logout_calls == 0
+    await client.close()
+    assert mock_auth.logout_calls == 1
+
+
+@pytest.mark.asyncio
 async def test_context_manager_calls_close():
     """Test that async context manager calls close() on exit."""
     mock_client = MockAsyncClient("https://example.com", {})
@@ -136,41 +155,15 @@ async def test_context_manager_calls_close():
         auth=mock_auth,
     )
 
+    assert mock_auth.logout_calls == 0
+
     # Use context manager
     async with client as ctx_client:
         assert ctx_client is client
+        assert mock_auth.logout_calls == 0  # Not called yet
 
     # After exiting context, verify logout was called
-    # The MockAuthManager doesn't track logout calls, but we can verify
-    # the context manager completed without errors
-
-
-@pytest.mark.asyncio
-async def test_close_calls_auth_logout():
-    """Test that close() method calls auth.logout()."""
-    mock_client = MockAsyncClient("https://example.com", {})
-
-    # Create a custom mock auth that tracks logout calls
-    class LogoutTrackingAuth(MockAuthManager):
-        def __init__(self):
-            super().__init__()
-            self.logout_called = False
-
-        async def logout(self):
-            self.logout_called = True
-
-    mock_auth = LogoutTrackingAuth()
-
-    client = EgaugeJsonClient(
-        base_url="https://egauge.local",
-        username="owner",
-        password="testpass",
-        client=mock_client,
-        auth=mock_auth,
-    )
-
-    await client.close()
-    assert mock_auth.logout_called is True
+    assert mock_auth.logout_calls == 1
 
 
 # Phase 2: get_register_info() tests
