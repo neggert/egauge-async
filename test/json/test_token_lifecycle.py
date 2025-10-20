@@ -411,7 +411,7 @@ def test_refresh_buffer_validation():
     mock_client = MockAsyncClient("https://egauge.local", {})
 
     # Test negative buffer
-    with pytest.raises(ValueError, match="must be between 0 and 600"):
+    with pytest.raises(ValueError, match="must be between 1 and 600"):
         JwtAuthManager(
             "https://egauge.local",
             "owner",
@@ -421,7 +421,7 @@ def test_refresh_buffer_validation():
         )
 
     # Test zero buffer
-    with pytest.raises(ValueError, match="must be between 0 and 600"):
+    with pytest.raises(ValueError, match="must be between 1 and 600"):
         JwtAuthManager(
             "https://egauge.local",
             "owner",
@@ -431,7 +431,7 @@ def test_refresh_buffer_validation():
         )
 
     # Test buffer too large
-    with pytest.raises(ValueError, match="must be between 0 and 600"):
+    with pytest.raises(ValueError, match="must be between 1 and 600"):
         JwtAuthManager(
             "https://egauge.local",
             "owner",
