@@ -21,6 +21,10 @@ dev = [
     "pytest-mock>=3.15.0",
     "ruff>=0.14.0",
 ]
+examples = [
+    "pandas>=2.0.0",
+    "matplotlib>=3.7.0",
+]
 
 [build-system]
 requires = ["hatchling", "uv-dynamic-versioning"]
@@ -35,3 +39,8 @@ fallback-version = "0.0.0"
 [tool.pyright]
 include = ["egauge_async"]
 typeCheckingMode = "strict"
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests (run against real eGauge device)",
+]

@@ -18,3 +18,15 @@ class EgaugeHTTPErrorCode(EgaugeException):
 
 class EgaugeParsingException(EgaugeException):
     pass
+
+
+class EgaugeAuthenticationError(EgaugeException):
+    """Exception raised when authentication fails"""
+
+    pass
+
+
+class EgaugeUnknownRegisterError(EgaugeException):
+    """Exception raised when an unknown register is requested"""
+
+    pass
