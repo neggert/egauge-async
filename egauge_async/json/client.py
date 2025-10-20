@@ -13,6 +13,18 @@ from egauge_async.exceptions import (
 
 
 class EgaugeJsonClient:
+    """Async client for eGauge JSON API with JWT authentication.
+
+    This client can be used as an async context manager for automatic cleanup:
+
+        async with httpx.AsyncClient(verify=False) as http_client:
+            async with EgaugeJsonClient(url, user, pwd, http_client) as client:
+                data = await client.get_current_measurements()
+
+    Note: The httpx.AsyncClient must be managed by the caller. This client
+    only handles JWT token cleanup via close().
+    """
+
     def __init__(
         self,
         base_url: str,
@@ -261,3 +273,21 @@ class EgaugeJsonClient:
                 result.append(row_dict)
 
         return result
+
+    async def close(self) -> None:
+        """Close the client and revoke JWT token.
+
+        This method logs out and revokes the current JWT token. The httpx.AsyncClient
+        is NOT closed as it is managed by the caller.
+
+        This is called automatically when using the client as a context manager.
+        """
+        await self.auth.logout()
+
+    async def __aenter__(self) -> "EgaugeJsonClient":
+        """Enter async context manager."""
+        return self
+
+    async def __aexit__(self, *args: object) -> None:
+        """Exit async context manager and cleanup resources."""
+        await self.close()
