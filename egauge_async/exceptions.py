@@ -26,12 +26,6 @@ class EgaugeAuthenticationError(EgaugeException):
     pass
 
 
-class EgaugeTokenExpiredError(EgaugeException):
-    """Exception raised when a JWT token has expired"""
-
-    pass
-
-
 class EgaugeUnknownRegisterError(EgaugeException):
     """Exception raised when an unknown register is requested"""
 
