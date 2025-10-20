@@ -9,6 +9,7 @@ from egauge_async.exceptions import (
     EgaugeUnknownRegisterError,
     EgaugeParsingException,
     EgaugePermissionError,
+    EgaugeAuthenticationError,
 )
 from mocks import MockAsyncClient, MultiResponseClient, MockAuthManager
 
@@ -866,3 +867,132 @@ async def test_get_user_rights_missing_rights_field():
         EgaugeParsingException, match="User rights response missing 'rights' field"
     ):
         await client.get_user_rights()
+
+
+# Phase 6: get_device_serial_number() tests
+@pytest.mark.asyncio
+async def test_get_device_serial_number_success():
+    """Test successfully fetching device serial number."""
+    response_data = {"result": "G10400", "error": None}
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/sys/sn", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    serial_number = await client.get_device_serial_number()
+
+    assert serial_number == "G10400"
+
+
+@pytest.mark.asyncio
+async def test_get_device_serial_number_alphanumeric():
+    """Test serial number with letters and numbers."""
+    response_data = {"result": "0Y0035", "error": None}
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/sys/sn", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    serial_number = await client.get_device_serial_number()
+
+    assert serial_number == "0Y0035"
+
+
+@pytest.mark.asyncio
+async def test_get_device_serial_number_uses_bearer_auth():
+    """Test that get_device_serial_number uses Bearer token authentication."""
+    response_data = {"result": "G10400", "error": None}
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/sys/sn", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    await client.get_device_serial_number()
+
+    # Verify auth manager was called
+    assert mock_auth.get_token_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_get_device_serial_number_missing_result_field():
+    """Test that missing result field raises EgaugeParsingException."""
+    response_data = {"error": None}  # No result field
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/sys/sn", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    # Should raise exception since result field is missing
+    with pytest.raises(
+        EgaugeParsingException, match="Serial number response missing 'result' field"
+    ):
+        await client.get_device_serial_number()
+
+
+@pytest.mark.asyncio
+async def test_get_device_serial_number_permission_denied():
+    """Test that 401 with valid auth raises EgaugePermissionError.
+
+    Scenario: User is authenticated but lacks permission to read device settings.
+    - /api/sys/sn returns 401 (permission denied)
+    - /api/auth/rights succeeds (user is authenticated)
+    - Should raise EgaugePermissionError (not EgaugeAuthenticationError)
+    """
+    # Mock client that returns 401 for serial number but 200 for rights
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/sys/sn", {}, status_code=401)
+    mock_client.add_get_handler("/api/auth/rights", {"usr": "guest", "rights": []})
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "guest", "pass", mock_client, mock_auth
+    )
+
+    # Should raise permission error, not authentication error
+    with pytest.raises(
+        EgaugePermissionError,
+        match="User 'guest' lacks permission to read device settings",
+    ):
+        await client.get_device_serial_number()
+
+
+@pytest.mark.asyncio
+async def test_get_device_serial_number_authentication_failed():
+    """Test that 401 with invalid auth raises EgaugeAuthenticationError.
+
+    Scenario: Invalid credentials - both endpoints return 401.
+    - /api/sys/sn returns 401 (authentication failed)
+    - /api/auth/rights also returns 401 (credentials truly invalid)
+    - Should raise EgaugeAuthenticationError
+    """
+    # Mock client that returns 401 for both endpoints
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/sys/sn", {}, status_code=401)
+    mock_client.add_get_handler("/api/auth/rights", {}, status_code=401)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "baduser", "badpass", mock_client, mock_auth
+    )
+
+    # Should raise authentication error
+    with pytest.raises(
+        EgaugeAuthenticationError, match="Authentication failed after token refresh"
+    ):
+        await client.get_device_serial_number()
