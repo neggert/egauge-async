@@ -68,3 +68,11 @@ class AuthResponse:
 
     jwt: str
     error: str | None = None
+
+
+@dataclass
+class UserRights:
+    """Response from /auth/rights endpoint containing user privileges"""
+
+    usr: str
+    rights: list[str]

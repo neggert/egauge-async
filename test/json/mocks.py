@@ -38,11 +38,16 @@ class MockAuthManager:
         self.token = token
         self.get_token_calls = 0
         self.logout_calls = 0
+        self.invalidate_token_calls = 0
 
     async def get_token(self) -> str:
         """Return mock JWT token."""
         self.get_token_calls += 1
         return self.token
+
+    async def invalidate_token(self) -> None:
+        """Mock invalidate_token - tracks calls."""
+        self.invalidate_token_calls += 1
 
     async def logout(self) -> None:
         """Mock logout - tracks calls."""

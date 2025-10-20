@@ -597,3 +597,63 @@ async def test_consistency_historical_vs_current(real_client):
         # Should have similar register sets (allowing for some variation)
         # Historical might have fewer registers depending on configuration
         assert len(current_names & historical_names) > 0
+
+
+# ============================================================================
+# G. User Rights and Device Serial Number Tests
+# ============================================================================
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_get_user_rights(real_client):
+    """Test fetching authenticated user's rights/privileges."""
+    user_rights = await real_client.get_user_rights()
+
+    # Should return username
+    assert isinstance(user_rights.usr, str)
+    assert len(user_rights.usr) > 0
+
+    # Should return list of rights
+    assert isinstance(user_rights.rights, list)
+    # Owner typically has save/ctrl rights, but list could be empty for restricted users
+    for right in user_rights.rights:
+        assert isinstance(right, str)
+        # Common rights are "save" and "ctrl"
+        assert right in ["save", "ctrl"] or len(right) > 0
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_get_device_serial_number(real_client):
+    """Test fetching device serial number."""
+    serial_number = await real_client.get_device_serial_number()
+
+    # Should return a non-empty string
+    assert isinstance(serial_number, str)
+    assert len(serial_number) > 0
+
+    # Serial numbers typically contain alphanumeric characters
+    # Examples: "G10400", "0Y0035"
+    assert serial_number.replace("-", "").replace("_", "").isalnum()
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_user_rights_consistent_with_username(real_client, egauge_config):
+    """Test that user rights username matches the authenticated user."""
+    user_rights = await real_client.get_user_rights()
+
+    # Username in rights should match the configured username
+    assert user_rights.usr == egauge_config["username"]
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_serial_number_consistent_across_calls(real_client):
+    """Test that serial number is consistent across multiple calls."""
+    serial1 = await real_client.get_device_serial_number()
+    serial2 = await real_client.get_device_serial_number()
+
+    # Serial number should be the same every time
+    assert serial1 == serial2

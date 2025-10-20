@@ -26,6 +26,12 @@ class EgaugeAuthenticationError(EgaugeException):
     pass
 
 
+class EgaugePermissionError(EgaugeException):
+    """Exception raised when user is authenticated but lacks required permissions"""
+
+    pass
+
+
 class EgaugeUnknownRegisterError(EgaugeException):
     """Exception raised when an unknown register is requested"""
 
