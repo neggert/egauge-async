@@ -342,20 +342,27 @@ class JwtAuthManager:
         """Revoke the current JWT token and clear the cache.
 
         This method:
-        1. Invalidates the local cache immediately
-        2. Notifies the server to revoke the token
-
-        If no token is currently set, this is a no-op.
+        1. Checks if a token exists
+        2. If token exists: invalidates local cache and notifies server
+        3. If no token: this is a no-op
 
         Raises:
             EgaugeAuthenticationError: If the logout request fails
         """
-        # Invalidate local cache first (prevents use even if server call fails)
-        await self.invalidate_token()
+        # Check if we have a token to revoke
+        async with self._token_lock:
+            if self._token_state is None:
+                return  # No-op if not authenticated
 
-        # Notify server
+            # Save token for server notification before clearing
+            token = self._token_state.token
+            # Invalidate local cache first (prevents use even if server call fails)
+            self._token_state = None
+
+        # Notify server to revoke the token
         url = f"{self.base_url}/api/auth/logout"
-        response = await self.client.get(url)
+        headers = {"Authorization": f"Bearer {token}"}
+        response = await self.client.get(url, headers=headers)
 
         if response.status_code != 200:
             raise EgaugeAuthenticationError(
