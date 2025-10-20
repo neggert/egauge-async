@@ -854,6 +854,73 @@ async def test_get_current_counters_uses_bearer_auth():
     assert mock_auth.get_token_calls == 1
 
 
+@pytest.mark.asyncio
+async def test_get_current_counters_with_register_filter():
+    """Test filtering current counters to specific registers."""
+    # First response: register info for mapping names to indices
+    register_info_response = {
+        "ts": "1678330813.000",
+        "registers": [
+            {"name": "Grid", "type": "P", "idx": 17, "did": 0},
+            {"name": "Solar", "type": "P", "idx": 18, "did": 1},
+            {"name": "Total", "type": "P", "idx": 19},
+        ],
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/register", register_info_response)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    # Pre-populate cache by calling get_register_info
+    await client.get_register_info()
+
+    # Now add handler for the filtered counter call
+    filtered_response = {
+        "registers": [{"name": "Grid", "type": "P", "idx": 17}],
+        "ranges": [{"ts": "1678298313.000", "delta": 1, "rows": [["7494425049"]]}],
+    }
+    mock_client.add_get_handler("/api/register", filtered_response)
+
+    counters = await client.get_current_counters(registers=["Grid"])
+
+    # Should only return Grid with counter value
+    assert len(counters) == 1
+    assert counters["Grid"] == 7494425049.0
+
+
+@pytest.mark.asyncio
+async def test_get_current_counters_unknown_register():
+    """Test that requesting an unknown register raises EgaugeUnknownRegisterError."""
+    register_info_response = {
+        "ts": "1678330813.000",
+        "registers": [
+            {"name": "Grid", "type": "P", "idx": 17, "did": 0},
+            {"name": "Solar", "type": "P", "idx": 18, "did": 1},
+        ],
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/register", register_info_response)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    # Pre-populate cache
+    await client.get_register_info()
+
+    # Try to get counters for an unknown register
+    with pytest.raises(
+        EgaugeUnknownRegisterError, match="Unknown register Nonexistent"
+    ):
+        await client.get_current_counters(registers=["Nonexistent"])
+
+
 # Phase 6: get_user_rights() tests
 @pytest.mark.asyncio
 async def test_get_user_rights_success():
