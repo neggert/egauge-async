@@ -998,6 +998,149 @@ async def test_get_current_counters_quantum_conversion():
     assert counters["Voltage"] == 240.0
 
 
+@pytest.mark.asyncio
+async def test_get_current_counters_missing_ranges():
+    """Test that missing ranges array raises EgaugeParsingException."""
+    response_data = {
+        "registers": [{"name": "Grid", "type": "P", "idx": 17}],
+        # No ranges field
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/register", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    with pytest.raises(
+        EgaugeParsingException,
+        match="Response missing 'ranges' array or array is empty",
+    ):
+        await client.get_current_counters()
+
+
+@pytest.mark.asyncio
+async def test_get_current_counters_empty_ranges():
+    """Test that empty ranges array raises EgaugeParsingException."""
+    response_data = {
+        "registers": [{"name": "Grid", "type": "P", "idx": 17}],
+        "ranges": [],  # Empty array
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/register", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    with pytest.raises(
+        EgaugeParsingException,
+        match="Response missing 'ranges' array or array is empty",
+    ):
+        await client.get_current_counters()
+
+
+@pytest.mark.asyncio
+async def test_get_current_counters_multiple_ranges():
+    """Test that multiple ranges raises EgaugeParsingException."""
+    response_data = {
+        "registers": [{"name": "Grid", "type": "P", "idx": 17}],
+        "ranges": [
+            {"ts": "1678298313.000", "delta": 1, "rows": [["100"]]},
+            {"ts": "1678298314.000", "delta": 1, "rows": [["200"]]},  # Unexpected
+        ],
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/register", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    with pytest.raises(
+        EgaugeParsingException, match="Expected 1 range for time=now query, got 2"
+    ):
+        await client.get_current_counters()
+
+
+@pytest.mark.asyncio
+async def test_get_current_counters_missing_rows_field():
+    """Test that missing rows field raises EgaugeParsingException."""
+    response_data = {
+        "registers": [{"name": "Grid", "type": "P", "idx": 17}],
+        "ranges": [
+            {"ts": "1678298313.000", "delta": 1}  # No rows field
+        ],
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/register", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    with pytest.raises(
+        EgaugeParsingException, match="Range object missing 'rows' field"
+    ):
+        await client.get_current_counters()
+
+
+@pytest.mark.asyncio
+async def test_get_current_counters_empty_rows():
+    """Test that empty rows array raises EgaugeParsingException."""
+    response_data = {
+        "registers": [{"name": "Grid", "type": "P", "idx": 17}],
+        "ranges": [{"ts": "1678298313.000", "delta": 1, "rows": []}],  # Empty rows
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/register", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    with pytest.raises(EgaugeParsingException, match="Range 'rows' array is empty"):
+        await client.get_current_counters()
+
+
+@pytest.mark.asyncio
+async def test_get_current_counters_multiple_rows():
+    """Test that multiple rows raises EgaugeParsingException."""
+    response_data = {
+        "registers": [{"name": "Grid", "type": "P", "idx": 17}],
+        "ranges": [
+            {
+                "ts": "1678298313.000",
+                "delta": 1,
+                "rows": [["100"], ["200"]],  # Multiple rows unexpected for time=now
+            }
+        ],
+    }
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/api/register", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+    )
+
+    with pytest.raises(
+        EgaugeParsingException, match="Expected 1 row for time=now query, got 2"
+    ):
+        await client.get_current_counters()
+
+
 # Phase 6: get_user_rights() tests
 @pytest.mark.asyncio
 async def test_get_user_rights_success():

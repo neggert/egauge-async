@@ -256,21 +256,38 @@ class EgaugeJsonClient:
             reg_types.append(RegisterType(r["type"]))
 
         # Parse the current values from ranges
+        # For time=now, we expect exactly 1 range with exactly 1 row
+        ranges = data.get("ranges", [])
+        if not ranges:
+            raise EgaugeParsingException(
+                "Response missing 'ranges' array or array is empty"
+            )
+        if len(ranges) > 1:
+            raise EgaugeParsingException(
+                f"Expected 1 range for time=now query, got {len(ranges)}"
+            )
+
+        range_obj = ranges[0]
+        if "rows" not in range_obj:
+            raise EgaugeParsingException("Range object missing 'rows' field")
+
+        rows = range_obj["rows"]
+        if not rows:
+            raise EgaugeParsingException("Range 'rows' array is empty")
+        if len(rows) > 1:
+            raise EgaugeParsingException(
+                f"Expected 1 row for time=now query, got {len(rows)}"
+            )
+
+        row = rows[0]
         result: dict[str, float] = {}
 
-        for range_obj in data.get("ranges", []):
-            if "rows" in range_obj and range_obj["rows"]:
-                # Get the first (and only) row
-                row = range_obj["rows"][0]
-
-                # Convert each value with quantum
-                for j, value_str in enumerate(row):
-                    raw_value = int(value_str)
-                    quantum = get_quantum(reg_types[j])
-                    physical_value = raw_value * quantum
-                    result[reg_names[j]] = physical_value
-
-                break  # Only one row expected with time=now
+        # Convert each value with quantum
+        for j, value_str in enumerate(row):
+            raw_value = int(value_str)
+            quantum = get_quantum(reg_types[j])
+            physical_value = raw_value * quantum
+            result[reg_names[j]] = physical_value
 
         return result
 
