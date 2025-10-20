@@ -23,6 +23,14 @@ class EgaugeJsonClient:
 
     Note: The httpx.AsyncClient must be managed by the caller. This client
     only handles JWT token cleanup via close().
+
+    Timeout Configuration:
+        Timeouts should be configured on the httpx.AsyncClient passed to the
+        constructor. Example:
+
+            timeout = httpx.Timeout(10.0, connect=5.0)
+            async with httpx.AsyncClient(timeout=timeout, verify=False) as http_client:
+                client = EgaugeJsonClient(url, user, pwd, http_client)
     """
 
     def __init__(
