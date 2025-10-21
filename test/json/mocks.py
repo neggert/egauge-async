@@ -114,7 +114,8 @@ class MultiResponseClient:
         self._post_handlers[url_pattern] = (response_json, status_code)
 
     async def get(self, url: str, **kwargs: Any) -> MockResponse:
-        self.calls.append(("GET", url))
+        params = kwargs.get("params")
+        self.calls.append(("GET", url, params))
 
         for pattern, (response_json, status_code) in self._get_handlers.items():
             if pattern in url:
