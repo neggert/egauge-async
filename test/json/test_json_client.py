@@ -389,6 +389,14 @@ async def test_get_current_measurements_uses_rate_parameter():
     assert len(measurements) == 1
     assert measurements["Grid"] == 1798.5
 
+    # Verify the rate parameter was passed
+    assert len(mock_client.calls) == 1
+    method, url, params = mock_client.calls[0]
+    assert method == "GET"
+    assert params is not None
+    assert "rate" in params
+    assert params["rate"] == ""
+
 
 @pytest.mark.asyncio
 async def test_get_current_measurements_with_register_filter():
@@ -427,6 +435,18 @@ async def test_get_current_measurements_with_register_filter():
     # Should only return Grid with rate value
     assert len(measurements) == 1
     assert measurements["Grid"] == 1798.5
+
+    # Verify the reg parameter was passed (2 calls: one for register info, one for measurements)
+    assert len(mock_client.calls) == 2
+    method, url, params = mock_client.calls[
+        1
+    ]  # Second call is the filtered measurements
+    assert method == "GET"
+    assert params is not None
+    assert "reg" in params
+    assert "17" in params["reg"]  # Grid has idx=17 (format may be none+17 or 17)
+    assert "rate" in params
+    assert params["rate"] == ""
 
 
 @pytest.mark.asyncio
@@ -559,6 +579,19 @@ async def test_get_historical_counters_basic():
     assert result[1]["Grid"] == 7494425954.0
     assert result[1]["Voltage"] == 120000.5  # 120000500 * 0.001
 
+    # Verify the time parameter was passed in start:step:end format
+    assert len(mock_client.calls) == 1
+    method, url, params = mock_client.calls[0]
+    assert method == "GET"
+    assert params is not None
+    assert "time" in params
+    # Format: start_timestamp:step_seconds:end_timestamp
+    start_ts = int(start.timestamp())
+    end_ts = int(end.timestamp())
+    step_sec = int(step.total_seconds())
+    expected_time = f"{start_ts}:{step_sec}:{end_ts}"
+    assert params["time"] == expected_time
+
 
 @pytest.mark.asyncio
 async def test_get_historical_counters_multiple_ranges():
@@ -651,6 +684,21 @@ async def test_get_historical_counters_with_register_filter():
     assert "Grid" in result[0]
     assert "Solar" not in result[0]  # Filtered out
 
+    # Verify the reg parameter was passed (2 calls: one for register info, one for historical)
+    assert len(mock_client.calls) == 2
+    method, url, params = mock_client.calls[1]  # Second call is the filtered historical
+    assert method == "GET"
+    assert params is not None
+    assert "reg" in params
+    assert "17" in params["reg"]  # Grid has idx=17 (format may be none+17 or 17)
+    assert "time" in params
+    # Format: start_timestamp:step_seconds:end_timestamp
+    start_ts = int(start.timestamp())
+    end_ts = int(end.timestamp())
+    step_sec = int(step.total_seconds())
+    expected_time = f"{start_ts}:{step_sec}:{end_ts}"
+    assert params["time"] == expected_time
+
 
 @pytest.mark.asyncio
 async def test_get_historical_counters_with_max_rows():
@@ -682,6 +730,21 @@ async def test_get_historical_counters_with_max_rows():
 
     # Should only return 2 rows as limited by max_rows
     assert len(result) == 2
+
+    # Verify the max-rows parameter was passed
+    assert len(mock_client.calls) == 1
+    method, url, params = mock_client.calls[0]
+    assert method == "GET"
+    assert params is not None
+    assert "max-rows" in params
+    assert params["max-rows"] == "2"
+    assert "time" in params
+    # Format: start_timestamp:step_seconds:end_timestamp
+    start_ts = int(start.timestamp())
+    end_ts = int(end.timestamp())
+    step_sec = int(step.total_seconds())
+    expected_time = f"{start_ts}:{step_sec}:{end_ts}"
+    assert params["time"] == expected_time
 
 
 @pytest.mark.asyncio
@@ -831,6 +894,14 @@ async def test_get_current_counters_uses_time_now_parameter():
     assert len(counters) == 1
     assert counters["Grid"] == 100.0
 
+    # Verify the time parameter was passed with value "now"
+    assert len(mock_client.calls) == 1
+    method, url, params = mock_client.calls[0]
+    assert method == "GET"
+    assert params is not None
+    assert "time" in params
+    assert params["time"] == "now"
+
 
 @pytest.mark.asyncio
 async def test_get_current_counters_uses_bearer_auth():
@@ -890,6 +961,16 @@ async def test_get_current_counters_with_register_filter():
     # Should only return Grid with counter value
     assert len(counters) == 1
     assert counters["Grid"] == 7494425049.0
+
+    # Verify the reg parameter was passed (2 calls: one for register info, one for counters)
+    assert len(mock_client.calls) == 2
+    method, url, params = mock_client.calls[1]  # Second call is the filtered counters
+    assert method == "GET"
+    assert params is not None
+    assert "reg" in params
+    assert "17" in params["reg"]  # Grid has idx=17 (format may be none+17 or 17)
+    assert "time" in params
+    assert params["time"] == "now"
 
 
 @pytest.mark.asyncio
