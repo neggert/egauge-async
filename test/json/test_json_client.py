@@ -1778,7 +1778,7 @@ async def test_get_model_permission_denied():
     # Should raise permission error, not authentication error
     with pytest.raises(
         EgaugePermissionError,
-        match="User 'guest' lacks permission to read device settings",
+        match="User 'guest' lacks permission to read device model. This endpoint requires view_settings privilege.",
     ):
         await client.get_model()
 
