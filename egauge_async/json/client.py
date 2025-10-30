@@ -1,12 +1,11 @@
 from datetime import datetime as dt, timedelta, timezone
-import ipaddress
-import re
 
 import httpx
 
 from egauge_async.json.auth import JwtAuthManager
 from egauge_async.json.models import RegisterType, RegisterInfo, UserRights
 from egauge_async.json.type_codes import get_quantum
+from egauge_async.utils import is_valid_host
 from egauge_async.exceptions import (
     EgaugeUnknownRegisterError,
     EgaugeParsingException,
@@ -56,7 +55,7 @@ class EgaugeJsonClient:
         # Validate inputs
         if not host:
             raise ValueError("host cannot be empty")
-        if not self._is_valid_host(host):
+        if not is_valid_host(host):
             raise ValueError(
                 "host must be a valid DNS hostname or IPv4 address. "
                 "Do not include protocol (http://, https://), port numbers, or path separators."
@@ -76,38 +75,6 @@ class EgaugeJsonClient:
         self.client = client
         self.auth = auth or JwtAuthManager(host, username, password, client, use_ssl)
         self._register_cache: dict[str, RegisterInfo] | None = None
-
-    @staticmethod
-    def _is_valid_host(host: str) -> bool:
-        """Validate that host is a valid DNS hostname or IPv4 address.
-
-        Args:
-            host: Host string to validate
-
-        Returns:
-            True if valid, False otherwise
-        """
-        # Reject if contains protocol, port, or path separators
-        if any(x in host for x in ["://", ":", "/"]):
-            return False
-
-        # Check if it's a valid IPv4 address
-        try:
-            ipaddress.IPv4Address(host)
-            return True
-        except ipaddress.AddressValueError:
-            pass
-
-        # Check if it's a valid DNS hostname
-        # RFC 1123: labels are 1-63 chars, alphanumeric and hyphens (not starting/ending with hyphen)
-        # Total length up to 253 chars
-        if len(host) > 253:
-            return False
-
-        # Hostname regex: labels separated by dots
-        # Each label: starts with alphanumeric, contains alphanumeric or hyphens, ends with alphanumeric
-        hostname_pattern = r"^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$"
-        return bool(re.match(hostname_pattern, host))
 
     async def _get_with_auth(
         self, url: str, params: dict[str, str] | None = None
