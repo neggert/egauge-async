@@ -47,7 +47,7 @@ def test_init_stores_parameters():
         auth=mock_auth,
     )
 
-    assert client.base_url == "https://egauge12345.local"
+    assert client.base_url == "https://egauge12345.local/api"
     assert client.username == "owner"
     assert client.password == "testpass"
     assert client.client is mock_client
@@ -164,7 +164,7 @@ def test_init_constructs_base_url_with_https():
 
     assert client.host == "egauge12345.local"
     assert client.use_ssl is True
-    assert client.base_url == "https://egauge12345.local"
+    assert client.base_url == "https://egauge12345.local/api"
 
 
 def test_init_use_ssl_false_creates_http_url():
@@ -182,7 +182,7 @@ def test_init_use_ssl_false_creates_http_url():
     )
 
     assert client.use_ssl is False
-    assert client.base_url == "http://egauge.local"
+    assert client.base_url == "http://egauge.local/api"
 
 
 @pytest.mark.asyncio
@@ -243,7 +243,7 @@ async def test_get_register_info_success():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -272,7 +272,7 @@ async def test_get_register_info_caching():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -299,7 +299,7 @@ async def test_get_register_info_uses_bearer_auth():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -321,7 +321,7 @@ async def test_get_register_info_missing_name_field():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -342,7 +342,7 @@ async def test_get_register_info_missing_type_field():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -365,7 +365,7 @@ async def test_get_register_info_missing_idx_field():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -392,7 +392,7 @@ async def test_get_current_measurements_all_registers():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -415,7 +415,7 @@ async def test_get_current_measurements_uses_rate_parameter():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -452,7 +452,7 @@ async def test_get_current_measurements_with_register_filter():
 
     # The MultiResponseClient will return register_info_response for first call (caching)
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", register_info_response)
+    mock_client.add_get_handler("/register", register_info_response)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -467,7 +467,7 @@ async def test_get_current_measurements_with_register_filter():
         "ts": "1678330813.000",
         "registers": [{"name": "Grid", "type": "P", "idx": 17, "rate": 1798.5}],
     }
-    mock_client.add_get_handler("/api/register", filtered_response)
+    mock_client.add_get_handler("/register", filtered_response)
 
     measurements = await client.get_current_measurements(registers=["Grid"])
 
@@ -499,7 +499,7 @@ async def test_get_current_measurements_no_rate_values():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -525,7 +525,7 @@ async def test_get_current_measurements_unknown_register():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", register_info_response)
+    mock_client.add_get_handler("/register", register_info_response)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -553,7 +553,7 @@ async def test_get_current_measurements_missing_name_field():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -593,7 +593,7 @@ async def test_get_historical_counters_basic():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -652,7 +652,7 @@ async def test_get_historical_counters_multiple_ranges():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -700,7 +700,7 @@ async def test_get_historical_counters_with_register_filter():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", register_info_response)
+    mock_client.add_get_handler("/register", register_info_response)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -711,7 +711,7 @@ async def test_get_historical_counters_with_register_filter():
     await client.get_register_info()
 
     # Add handler for historical call
-    mock_client.add_get_handler("/api/register", historical_response)
+    mock_client.add_get_handler("/register", historical_response)
 
     start = datetime(2023, 3, 8, 12, 0, 0, tzinfo=timezone.utc)
     end = datetime(2023, 3, 8, 13, 0, 0, tzinfo=timezone.utc)
@@ -754,7 +754,7 @@ async def test_get_historical_counters_with_max_rows():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -798,7 +798,7 @@ async def test_get_historical_counters_unknown_register():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", register_info_response)
+    mock_client.add_get_handler("/register", register_info_response)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -830,7 +830,7 @@ async def test_get_historical_counters_missing_name_field():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -855,7 +855,7 @@ async def test_get_historical_counters_missing_type_field():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -897,7 +897,7 @@ async def test_get_current_counters_all_registers():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -920,7 +920,7 @@ async def test_get_current_counters_uses_time_now_parameter():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -951,7 +951,7 @@ async def test_get_current_counters_uses_bearer_auth():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -978,7 +978,7 @@ async def test_get_current_counters_with_register_filter():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", register_info_response)
+    mock_client.add_get_handler("/register", register_info_response)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -993,7 +993,7 @@ async def test_get_current_counters_with_register_filter():
         "registers": [{"name": "Grid", "type": "P", "idx": 17}],
         "ranges": [{"ts": "1678298313.000", "delta": 1, "rows": [["7494425049"]]}],
     }
-    mock_client.add_get_handler("/api/register", filtered_response)
+    mock_client.add_get_handler("/register", filtered_response)
 
     counters = await client.get_current_counters(registers=["Grid"])
 
@@ -1024,7 +1024,7 @@ async def test_get_current_counters_unknown_register():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", register_info_response)
+    mock_client.add_get_handler("/register", register_info_response)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1050,7 +1050,7 @@ async def test_get_current_counters_missing_name_field():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1071,7 +1071,7 @@ async def test_get_current_counters_missing_type_field():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1103,7 +1103,7 @@ async def test_get_current_counters_quantum_conversion():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1127,7 +1127,7 @@ async def test_get_current_counters_missing_ranges():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1150,7 +1150,7 @@ async def test_get_current_counters_empty_ranges():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1176,7 +1176,7 @@ async def test_get_current_counters_multiple_ranges():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1200,7 +1200,7 @@ async def test_get_current_counters_missing_rows_field():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1222,7 +1222,7 @@ async def test_get_current_counters_empty_rows():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1248,7 +1248,7 @@ async def test_get_current_counters_multiple_rows():
     }
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/register", response_data)
+    mock_client.add_get_handler("/register", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1268,7 +1268,7 @@ async def test_get_user_rights_success():
     response_data = {"usr": "owner", "rights": ["save", "ctrl"]}
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/auth/rights", response_data)
+    mock_client.add_get_handler("/auth/rights", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1287,7 +1287,7 @@ async def test_get_user_rights_empty_rights():
     response_data = {"usr": "guest", "rights": []}
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/auth/rights", response_data)
+    mock_client.add_get_handler("/auth/rights", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1306,7 +1306,7 @@ async def test_get_user_rights_uses_bearer_auth():
     response_data = {"usr": "owner", "rights": ["save"]}
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/auth/rights", response_data)
+    mock_client.add_get_handler("/auth/rights", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1325,7 +1325,7 @@ async def test_get_user_rights_missing_usr_field():
     response_data = {"rights": ["save", "ctrl"]}  # No usr field
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/auth/rights", response_data)
+    mock_client.add_get_handler("/auth/rights", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1345,7 +1345,7 @@ async def test_get_user_rights_missing_rights_field():
     response_data = {"usr": "owner"}  # No rights field
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/auth/rights", response_data)
+    mock_client.add_get_handler("/auth/rights", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1366,7 +1366,7 @@ async def test_get_device_serial_number_success():
     response_data = {"result": "G10400", "error": None}
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/sys/sn", response_data)
+    mock_client.add_get_handler("/sys/sn", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1384,7 +1384,7 @@ async def test_get_device_serial_number_alphanumeric():
     response_data = {"result": "0Y0035", "error": None}
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/sys/sn", response_data)
+    mock_client.add_get_handler("/sys/sn", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1402,7 +1402,7 @@ async def test_get_device_serial_number_uses_bearer_auth():
     response_data = {"result": "G10400", "error": None}
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/sys/sn", response_data)
+    mock_client.add_get_handler("/sys/sn", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1421,7 +1421,7 @@ async def test_get_device_serial_number_missing_result_field():
     response_data = {"error": None}  # No result field
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/sys/sn", response_data)
+    mock_client.add_get_handler("/sys/sn", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1440,14 +1440,14 @@ async def test_get_device_serial_number_permission_denied():
     """Test that 401 with valid auth raises EgaugePermissionError.
 
     Scenario: User is authenticated but lacks permission to read device settings.
-    - /api/sys/sn returns 401 (permission denied)
-    - /api/auth/rights succeeds (user is authenticated)
+    - /sys/sn returns 401 (permission denied)
+    - /auth/rights succeeds (user is authenticated)
     - Should raise EgaugePermissionError (not EgaugeAuthenticationError)
     """
     # Mock client that returns 401 for serial number but 200 for rights
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/sys/sn", {}, status_code=401)
-    mock_client.add_get_handler("/api/auth/rights", {"usr": "guest", "rights": []})
+    mock_client.add_get_handler("/sys/sn", {}, status_code=401)
+    mock_client.add_get_handler("/auth/rights", {"usr": "guest", "rights": []})
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1467,14 +1467,14 @@ async def test_get_device_serial_number_authentication_failed():
     """Test that 401 with invalid auth raises EgaugeAuthenticationError.
 
     Scenario: Invalid credentials - both endpoints return 401.
-    - /api/sys/sn returns 401 (authentication failed)
-    - /api/auth/rights also returns 401 (credentials truly invalid)
+    - /sys/sn returns 401 (authentication failed)
+    - /auth/rights also returns 401 (credentials truly invalid)
     - Should raise EgaugeAuthenticationError
     """
     # Mock client that returns 401 for both endpoints
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/sys/sn", {}, status_code=401)
-    mock_client.add_get_handler("/api/auth/rights", {}, status_code=401)
+    mock_client.add_get_handler("/sys/sn", {}, status_code=401)
+    mock_client.add_get_handler("/auth/rights", {}, status_code=401)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1495,7 +1495,7 @@ async def test_get_hostname_success():
     response_data = {"result": "eGauge42", "error": None}
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/config/net/hostname", response_data)
+    mock_client.add_get_handler("/config/net/hostname", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1513,7 +1513,7 @@ async def test_get_hostname_with_dashes():
     response_data = {"result": "eGauge-Device-123", "error": None}
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/config/net/hostname", response_data)
+    mock_client.add_get_handler("/config/net/hostname", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1531,7 +1531,7 @@ async def test_get_hostname_uses_bearer_auth():
     response_data = {"result": "eGauge42", "error": None}
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/config/net/hostname", response_data)
+    mock_client.add_get_handler("/config/net/hostname", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1550,7 +1550,7 @@ async def test_get_hostname_missing_result_field():
     response_data = {"error": None}  # No result field
 
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/config/net/hostname", response_data)
+    mock_client.add_get_handler("/config/net/hostname", response_data)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1569,14 +1569,14 @@ async def test_get_hostname_permission_denied():
     """Test that 401 with valid auth raises EgaugePermissionError.
 
     Scenario: User is authenticated but lacks permission to read network configuration.
-    - /api/config/net/hostname returns 401 (permission denied)
-    - /api/auth/rights succeeds (user is authenticated)
+    - /config/net/hostname returns 401 (permission denied)
+    - /auth/rights succeeds (user is authenticated)
     - Should raise EgaugePermissionError (not EgaugeAuthenticationError)
     """
     # Mock client that returns 401 for hostname but 200 for rights
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/config/net/hostname", {}, status_code=401)
-    mock_client.add_get_handler("/api/auth/rights", {"usr": "guest", "rights": []})
+    mock_client.add_get_handler("/config/net/hostname", {}, status_code=401)
+    mock_client.add_get_handler("/auth/rights", {"usr": "guest", "rights": []})
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
@@ -1596,14 +1596,14 @@ async def test_get_hostname_authentication_failed():
     """Test that 401 with invalid auth raises EgaugeAuthenticationError.
 
     Scenario: Invalid credentials - both endpoints return 401.
-    - /api/config/net/hostname returns 401 (authentication failed)
-    - /api/auth/rights also returns 401 (credentials truly invalid)
+    - /config/net/hostname returns 401 (authentication failed)
+    - /auth/rights also returns 401 (credentials truly invalid)
     - Should raise EgaugeAuthenticationError
     """
     # Mock client that returns 401 for both endpoints
     mock_client = MultiResponseClient()
-    mock_client.add_get_handler("/api/config/net/hostname", {}, status_code=401)
-    mock_client.add_get_handler("/api/auth/rights", {}, status_code=401)
+    mock_client.add_get_handler("/config/net/hostname", {}, status_code=401)
+    mock_client.add_get_handler("/auth/rights", {}, status_code=401)
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(

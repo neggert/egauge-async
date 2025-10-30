@@ -67,7 +67,7 @@ class EgaugeJsonClient:
 
         # Construct base_url from host and use_ssl
         protocol = "https://" if use_ssl else "http://"
-        self.base_url = protocol + host
+        self.base_url = protocol + host + "/api"
         self.host = host
         self.use_ssl = use_ssl
         self.username = username
@@ -131,7 +131,7 @@ class EgaugeJsonClient:
         if self._register_cache is not None:
             return self._register_cache
 
-        url = f"{self.base_url}/api/register"
+        url = f"{self.base_url}/register"
         response = await self._get_with_auth(url)
         response.raise_for_status()
 
@@ -174,7 +174,7 @@ class EgaugeJsonClient:
         Returns:
             Dictionary mapping register name to current rate value (already in physical units)
         """
-        url = f"{self.base_url}/api/register"
+        url = f"{self.base_url}/register"
         params: dict[str, str] = {"rate": ""}
 
         # Filter to specific registers if requested
@@ -234,7 +234,7 @@ class EgaugeJsonClient:
             # Get specific counters
             solar = await client.get_current_counters(["Solar"])
         """
-        url = f"{self.base_url}/api/register"
+        url = f"{self.base_url}/register"
         params: dict[str, str] = {"time": "now"}
 
         # Filter to specific registers if requested
@@ -335,7 +335,7 @@ class EgaugeJsonClient:
             - "ts": datetime (timestamp)
             - Register names mapped to physical cumulative values (float, in rate_unit·seconds)
         """
-        url = f"{self.base_url}/api/register"
+        url = f"{self.base_url}/register"
 
         # Convert datetimes to Unix timestamps
         start_ts = int(start_time.timestamp())
@@ -417,7 +417,7 @@ class EgaugeJsonClient:
             EgaugeAuthenticationError: If authentication fails
             EgaugeParsingException: If response format is unexpected
         """
-        url = f"{self.base_url}/api/auth/rights"
+        url = f"{self.base_url}/auth/rights"
         response = await self._get_with_auth(url)
         response.raise_for_status()
 
@@ -443,7 +443,7 @@ class EgaugeJsonClient:
             EgaugeParsingException: If response format is unexpected
             httpx.HTTPStatusError: For other HTTP errors
         """
-        url = f"{self.base_url}/api/sys/sn"
+        url = f"{self.base_url}/sys/sn"
 
         try:
             response = await self._get_with_auth(url)
@@ -483,7 +483,7 @@ class EgaugeJsonClient:
             EgaugeParsingException: If response format is unexpected
             httpx.HTTPStatusError: For other HTTP errors
         """
-        url = f"{self.base_url}/api/config/net/hostname"
+        url = f"{self.base_url}/config/net/hostname"
 
         try:
             response = await self._get_with_auth(url)

@@ -239,7 +239,7 @@ def test_parse_jwt_expiry_string_numeric_values():
 # Test _fetch_nonce()
 @pytest.mark.asyncio
 async def test_fetch_nonce_success():
-    """Test successfully fetching server nonce from /api/auth/unauthorized"""
+    """Test successfully fetching server nonce from /auth/unauthorized"""
     response_data = {
         "rlm": "eGauge Administration",
         "nnc": "eyJ0eXAiJkpXVCJ9.eyJzdWIi.w5GCvM",
@@ -371,7 +371,7 @@ async def test_get_token_lazy_authentication():
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler(
-        "/api/auth/unauthorized",
+        "/auth/unauthorized",
         {
             "rlm": "eGauge Administration",
             "nnc": "server_nonce_123",
@@ -379,7 +379,7 @@ async def test_get_token_lazy_authentication():
         },
         status_code=401,
     )
-    mock_client.add_post_handler("/api/auth/login", {"jwt": test_jwt})
+    mock_client.add_post_handler("/auth/login", {"jwt": test_jwt})
 
     handler = JwtAuthManager("egauge12345.local", "owner", "password", mock_client)
 
@@ -402,7 +402,7 @@ async def test_get_token_caching():
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler(
-        "/api/auth/unauthorized",
+        "/auth/unauthorized",
         {
             "rlm": "eGauge Administration",
             "nnc": "server_nonce_123",
@@ -410,7 +410,7 @@ async def test_get_token_caching():
         },
         status_code=401,
     )
-    mock_client.add_post_handler("/api/auth/login", {"jwt": test_jwt})
+    mock_client.add_post_handler("/auth/login", {"jwt": test_jwt})
 
     handler = JwtAuthManager("egauge12345.local", "owner", "password", mock_client)
 
@@ -467,7 +467,7 @@ async def test_logout_success():
 
     # Token state should be cleared
     assert handler._token_state is None
-    # Should have made a GET request to /api/auth/logout
+    # Should have made a GET request to /auth/logout
     assert len(mock_client.calls) == 1
     assert mock_client.calls[0][0] == "GET"
 

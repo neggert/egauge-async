@@ -66,7 +66,7 @@ class JwtAuthManager:
 
         # Construct base_url from host and use_ssl
         protocol = "https://" if use_ssl else "http://"
-        self.base_url = protocol + host
+        self.base_url = protocol + host + "/api"
         self.username = username
         self.password = password
         self.client = client
@@ -229,7 +229,7 @@ class JwtAuthManager:
             The /api/auth/unauthorized endpoint returns 401 status code by design,
             providing nonce data in the response body for digest authentication.
         """
-        url = f"{self.base_url}/api/auth/unauthorized"
+        url = f"{self.base_url}/auth/unauthorized"
         response = await self.client.get(url)
 
         if response.status_code != 401:
@@ -278,7 +278,7 @@ class JwtAuthManager:
             client_nonce,
         )
 
-        url = f"{self.base_url}/api/auth/login"
+        url = f"{self.base_url}/auth/login"
         response = await self.client.post(
             url,
             json={
@@ -399,7 +399,7 @@ class JwtAuthManager:
             self._token_state = None
 
         # Notify server to revoke the token
-        url = f"{self.base_url}/api/auth/logout"
+        url = f"{self.base_url}/auth/logout"
         headers = {"Authorization": f"Bearer {token}"}
         response = await self.client.get(url, headers=headers)
 
