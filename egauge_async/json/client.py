@@ -24,7 +24,7 @@ class EgaugeJsonClient:
                 data = await client.get_current_measurements()
 
     Args:
-        host: Device hostname or IPv4 address (e.g., "egauge12345.local" or "192.168.1.100")
+        host: Device hostname (e.g., "egauge12345.local" or "192.168.1.100")
         username: Username for authentication
         password: Password for authentication
         client: httpx.AsyncClient instance for making HTTP requests
@@ -57,7 +57,7 @@ class EgaugeJsonClient:
             raise ValueError("host cannot be empty")
         if not is_valid_host(host):
             raise ValueError(
-                "host must be a valid DNS hostname or IPv4 address. "
+                "host must be a valid DNS hostname. "
                 "Do not include protocol (http://, https://), port numbers, or path separators."
             )
         if not username:

@@ -102,13 +102,14 @@ def test_init_validates_empty_host():
 
 
 def test_init_validates_host_format():
-    """Test that __init__ raises ValueError for invalid host format."""
+    """Test that __init__ raises ValueError for invalid host format.
+
+    Detailed host validation tests are in test_utils.py::test_is_valid_host_*
+    """
     mock_client = MockAsyncClient("https://example.com", {})
     mock_auth = MockAuthManager()
 
-    with pytest.raises(
-        ValueError, match="host must be a valid DNS hostname or IPv4 address"
-    ):
+    with pytest.raises(ValueError, match="host must be a valid DNS hostname"):
         EgaugeJsonClient(
             host="https://egauge.local",
             username="owner",
@@ -148,111 +149,8 @@ def test_init_validates_empty_password():
         )
 
 
-# Host validation tests
-def test_init_validates_host_with_protocol_prefix():
-    """Test that __init__ raises ValueError for host with http:// prefix."""
-    mock_client = MockAsyncClient("https://example.com", {})
-    mock_auth = MockAuthManager()
-
-    with pytest.raises(
-        ValueError, match="host must be a valid DNS hostname or IPv4 address"
-    ):
-        EgaugeJsonClient(
-            host="http://egauge.local",
-            username="owner",
-            password="testpass",
-            client=mock_client,
-            auth=mock_auth,
-        )
-
-
-def test_init_validates_host_with_https_prefix():
-    """Test that __init__ raises ValueError for host with https:// prefix."""
-    mock_client = MockAsyncClient("https://example.com", {})
-    mock_auth = MockAuthManager()
-
-    with pytest.raises(
-        ValueError, match="host must be a valid DNS hostname or IPv4 address"
-    ):
-        EgaugeJsonClient(
-            host="https://egauge.local",
-            username="owner",
-            password="testpass",
-            client=mock_client,
-            auth=mock_auth,
-        )
-
-
-def test_init_validates_host_with_port_number():
-    """Test that __init__ raises ValueError for host with port number."""
-    mock_client = MockAsyncClient("https://example.com", {})
-    mock_auth = MockAuthManager()
-
-    with pytest.raises(
-        ValueError, match="host must be a valid DNS hostname or IPv4 address"
-    ):
-        EgaugeJsonClient(
-            host="egauge.local:8080",
-            username="owner",
-            password="testpass",
-            client=mock_client,
-            auth=mock_auth,
-        )
-
-
-def test_init_validates_host_with_path_separator():
-    """Test that __init__ raises ValueError for host with path separator."""
-    mock_client = MockAsyncClient("https://example.com", {})
-    mock_auth = MockAuthManager()
-
-    with pytest.raises(
-        ValueError, match="host must be a valid DNS hostname or IPv4 address"
-    ):
-        EgaugeJsonClient(
-            host="egauge.local/",
-            username="owner",
-            password="testpass",
-            client=mock_client,
-            auth=mock_auth,
-        )
-
-
-def test_init_validates_host_with_path():
-    """Test that __init__ raises ValueError for host with path."""
-    mock_client = MockAsyncClient("https://example.com", {})
-    mock_auth = MockAuthManager()
-
-    with pytest.raises(
-        ValueError, match="host must be a valid DNS hostname or IPv4 address"
-    ):
-        EgaugeJsonClient(
-            host="egauge.local/api/register",
-            username="owner",
-            password="testpass",
-            client=mock_client,
-            auth=mock_auth,
-        )
-
-
-def test_init_accepts_valid_ipv4_address():
-    """Test that __init__ accepts valid IPv4 address."""
-    mock_client = MockAsyncClient("https://example.com", {})
-    mock_auth = MockAuthManager()
-
-    client = EgaugeJsonClient(
-        host="192.168.1.100",
-        username="owner",
-        password="testpass",
-        client=mock_client,
-        auth=mock_auth,
-    )
-
-    assert client.host == "192.168.1.100"
-    assert client.base_url == "https://192.168.1.100"
-
-
-def test_init_accepts_valid_dns_hostname():
-    """Test that __init__ accepts valid DNS hostname."""
+def test_init_constructs_base_url_with_https():
+    """Test that __init__ constructs HTTPS base_url from host by default."""
     mock_client = MockAsyncClient("https://example.com", {})
     mock_auth = MockAuthManager()
 
@@ -265,24 +163,8 @@ def test_init_accepts_valid_dns_hostname():
     )
 
     assert client.host == "egauge12345.local"
+    assert client.use_ssl is True
     assert client.base_url == "https://egauge12345.local"
-
-
-def test_init_accepts_dns_hostname_with_subdomain():
-    """Test that __init__ accepts DNS hostname with subdomain."""
-    mock_client = MockAsyncClient("https://example.com", {})
-    mock_auth = MockAuthManager()
-
-    client = EgaugeJsonClient(
-        host="meter.example.com",
-        username="owner",
-        password="testpass",
-        client=mock_client,
-        auth=mock_auth,
-    )
-
-    assert client.host == "meter.example.com"
-    assert client.base_url == "https://meter.example.com"
 
 
 def test_init_use_ssl_false_creates_http_url():

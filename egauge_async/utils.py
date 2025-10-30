@@ -1,6 +1,5 @@
 """Miscellaneous utitity functions"""
 
-import ipaddress
 import re
 from typing import Iterable, Tuple, Union
 
@@ -34,7 +33,7 @@ def create_query_string(params: Iterable[QueryParam]) -> str:
 
 def is_valid_host(host: str) -> bool:
     """
-    Validate that a host string is either a valid DNS hostname or IPv4 address.
+    Validate that a host string is a valid DNS hostname.
 
     Args:
         host: The host string to validate
@@ -46,24 +45,21 @@ def is_valid_host(host: str) -> bool:
         - Rejects protocol prefixes (http://, https://)
         - Rejects port numbers
         - Rejects path separators
-        - Accepts valid DNS hostnames per RFC 1123
-        - Accepts valid IPv4 addresses
+        - Accepts valid DNS hostnames per RFC 1123 (including IP addresses,
+          which are valid hostnames)
     """
     # Reject if contains protocol, port, or path separators
     if any(x in host for x in ["://", ":", "/"]):
         return False
 
-    # Check if it's a valid IPv4 address
-    try:
-        ipaddress.IPv4Address(host)
-        return True
-    except ipaddress.AddressValueError:
-        pass
-
-    # Check if it's a valid DNS hostname
+    # Check if it's a valid DNS hostname (RFC 1123)
+    # Total length up to 253 chars
     if len(host) > 253:
         return False
 
+    # Hostname regex: labels separated by dots
+    # Each label: starts with alphanumeric, contains alphanumeric or hyphens, ends with alphanumeric
+    # Labels can be 1-63 characters
     hostname_pattern = (
         r"^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*"
         r"[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$"
