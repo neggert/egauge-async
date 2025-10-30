@@ -1,7 +1,9 @@
 import asyncio
 import base64
 import hashlib
+import ipaddress
 import json
+import re
 import secrets
 import time
 from dataclasses import dataclass
@@ -30,17 +32,42 @@ MAX_TOKEN_LIFETIME_SECONDS = 86400  # Maximum expected token lifetime (24 hours)
 
 
 class JwtAuthManager:
-    """Handles JWT token authentication for the eGauge JSON API with automatic refresh"""
+    """Handles JWT token authentication for the eGauge JSON API with automatic refresh
+
+    Args:
+        host: Device hostname or IPv4 address (e.g., "egauge12345.local" or "192.168.1.100")
+        username: Username for authentication
+        password: Password for authentication
+        client: httpx.AsyncClient instance for making HTTP requests
+        use_ssl: Whether to use HTTPS (True) or HTTP (False). Default is True.
+        refresh_buffer_seconds: Seconds before token expiry to trigger proactive refresh
+    """
 
     def __init__(
         self,
-        base_url: str,
+        host: str,
         username: str,
         password: str,
         client: httpx.AsyncClient,
+        use_ssl: bool = True,
         refresh_buffer_seconds: int = 60,
     ):
-        self.base_url = base_url.rstrip("/")
+        # Validate inputs
+        if not host:
+            raise ValueError("host cannot be empty")
+        if not self._is_valid_host(host):
+            raise ValueError(
+                "host must be a valid DNS hostname or IPv4 address. "
+                "Do not include protocol (http://, https://), port numbers, or path separators."
+            )
+        if not username:
+            raise ValueError("username cannot be empty")
+        if not password:
+            raise ValueError("password cannot be empty")
+
+        # Construct base_url from host and use_ssl
+        protocol = "https://" if use_ssl else "http://"
+        self.base_url = protocol + host
         self.username = username
         self.password = password
         self.client = client
@@ -58,6 +85,38 @@ class JwtAuthManager:
                 f"refresh_buffer_seconds must be between {MIN_REFRESH_BUFFER_SECONDS} "
                 f"and {MAX_REFRESH_BUFFER_SECONDS}, got {refresh_buffer_seconds}"
             )
+
+    @staticmethod
+    def _is_valid_host(host: str) -> bool:
+        """Validate that host is a valid DNS hostname or IPv4 address.
+
+        Args:
+            host: Host string to validate
+
+        Returns:
+            True if valid, False otherwise
+        """
+        # Reject if contains protocol, port, or path separators
+        if any(x in host for x in ["://", ":", "/"]):
+            return False
+
+        # Check if it's a valid IPv4 address
+        try:
+            ipaddress.IPv4Address(host)
+            return True
+        except ipaddress.AddressValueError:
+            pass
+
+        # Check if it's a valid DNS hostname
+        # RFC 1123: labels are 1-63 chars, alphanumeric and hyphens (not starting/ending with hyphen)
+        # Total length up to 253 chars
+        if len(host) > 253:
+            return False
+
+        # Hostname regex: labels separated by dots
+        # Each label: starts with alphanumeric, contains alphanumeric or hyphens, ends with alphanumeric
+        hostname_pattern = r"^([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$"
+        return bool(re.match(hostname_pattern, host))
 
     @staticmethod
     def _parse_jwt_expiry(token: str) -> float:

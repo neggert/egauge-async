@@ -69,10 +69,12 @@ class EgaugeJsonClient:
         # Construct base_url from host and use_ssl
         protocol = "https://" if use_ssl else "http://"
         self.base_url = protocol + host
+        self.host = host
+        self.use_ssl = use_ssl
         self.username = username
         self.password = password
         self.client = client
-        self.auth = auth or JwtAuthManager(self.base_url, username, password, client)
+        self.auth = auth or JwtAuthManager(host, username, password, client, use_ssl)
         self._register_cache: dict[str, RegisterInfo] | None = None
 
     @staticmethod
