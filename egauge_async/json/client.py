@@ -1,4 +1,5 @@
 from datetime import datetime as dt, timedelta, timezone
+from typing import NoReturn
 
 import httpx
 
@@ -433,7 +434,7 @@ class EgaugeJsonClient:
 
     async def _disambiguate_auth_error(
         self, auth_error: EgaugeAuthenticationError, endpoint_description: str
-    ) -> None:
+    ) -> NoReturn:
         """Helper to distinguish between auth failure and permission denial.
 
         When a 401 error occurs, it could mean either invalid credentials OR
