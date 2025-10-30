@@ -10,6 +10,7 @@ import httpx
 
 from egauge_async.exceptions import EgaugeAuthenticationError, EgaugeParsingException
 from egauge_async.json.models import NonceResponse, AuthResponse
+from egauge_async.utils import is_valid_host
 
 
 @dataclass
@@ -30,17 +31,42 @@ MAX_TOKEN_LIFETIME_SECONDS = 86400  # Maximum expected token lifetime (24 hours)
 
 
 class JwtAuthManager:
-    """Handles JWT token authentication for the eGauge JSON API with automatic refresh"""
+    """Handles JWT token authentication for the eGauge JSON API with automatic refresh
+
+    Args:
+        host: Device hostname (e.g., "egauge12345.local" or "192.168.1.100")
+        username: Username for authentication
+        password: Password for authentication
+        client: httpx.AsyncClient instance for making HTTP requests
+        use_ssl: Whether to use HTTPS (True) or HTTP (False). Default is True.
+        refresh_buffer_seconds: Seconds before token expiry to trigger proactive refresh
+    """
 
     def __init__(
         self,
-        base_url: str,
+        host: str,
         username: str,
         password: str,
         client: httpx.AsyncClient,
+        use_ssl: bool = True,
         refresh_buffer_seconds: int = 60,
     ):
-        self.base_url = base_url.rstrip("/")
+        # Validate inputs
+        if not host:
+            raise ValueError("host cannot be empty")
+        if not is_valid_host(host):
+            raise ValueError(
+                "host must be a valid DNS hostname. "
+                "Do not include protocol (http://, https://), port numbers, or path separators."
+            )
+        if not username:
+            raise ValueError("username cannot be empty")
+        if not password:
+            raise ValueError("password cannot be empty")
+
+        # Construct base_url from host and use_ssl
+        protocol = "https://" if use_ssl else "http://"
+        self.base_url = protocol + host + "/api"
         self.username = username
         self.password = password
         self.client = client
@@ -203,7 +229,7 @@ class JwtAuthManager:
             The /api/auth/unauthorized endpoint returns 401 status code by design,
             providing nonce data in the response body for digest authentication.
         """
-        url = f"{self.base_url}/api/auth/unauthorized"
+        url = f"{self.base_url}/auth/unauthorized"
         response = await self.client.get(url)
 
         if response.status_code != 401:
@@ -252,7 +278,7 @@ class JwtAuthManager:
             client_nonce,
         )
 
-        url = f"{self.base_url}/api/auth/login"
+        url = f"{self.base_url}/auth/login"
         response = await self.client.post(
             url,
             json={
@@ -373,7 +399,7 @@ class JwtAuthManager:
             self._token_state = None
 
         # Notify server to revoke the token
-        url = f"{self.base_url}/api/auth/logout"
+        url = f"{self.base_url}/auth/logout"
         headers = {"Authorization": f"Bearer {token}"}
         response = await self.client.get(url, headers=headers)
 

@@ -5,6 +5,7 @@ import httpx
 from egauge_async.json.auth import JwtAuthManager
 from egauge_async.json.models import RegisterType, RegisterInfo, UserRights
 from egauge_async.json.type_codes import get_quantum
+from egauge_async.utils import is_valid_host
 from egauge_async.exceptions import (
     EgaugeUnknownRegisterError,
     EgaugeParsingException,
@@ -19,8 +20,16 @@ class EgaugeJsonClient:
     This client can be used as an async context manager for automatic cleanup:
 
         async with httpx.AsyncClient(verify=False) as http_client:
-            async with EgaugeJsonClient(url, user, pwd, http_client) as client:
+            async with EgaugeJsonClient("egauge12345.local", user, pwd, http_client) as client:
                 data = await client.get_current_measurements()
+
+    Args:
+        host: Device hostname (e.g., "egauge12345.local" or "192.168.1.100")
+        username: Username for authentication
+        password: Password for authentication
+        client: httpx.AsyncClient instance for making HTTP requests
+        use_ssl: Whether to use HTTPS (True) or HTTP (False). Default is True.
+        auth: Optional JwtAuthManager instance for testing
 
     Note: The httpx.AsyncClient must be managed by the caller. This client
     only handles JWT token cleanup via close().
@@ -31,32 +40,40 @@ class EgaugeJsonClient:
 
             timeout = httpx.Timeout(10.0, connect=5.0)
             async with httpx.AsyncClient(timeout=timeout, verify=False) as http_client:
-                client = EgaugeJsonClient(url, user, pwd, http_client)
+                client = EgaugeJsonClient("egauge12345.local", user, pwd, http_client)
     """
 
     def __init__(
         self,
-        base_url: str,
+        host: str,
         username: str,
         password: str,
         client: httpx.AsyncClient,
+        use_ssl: bool = True,
         auth: JwtAuthManager | None = None,
     ):
         # Validate inputs
-        if not base_url:
-            raise ValueError("base_url cannot be empty")
-        if not base_url.startswith(("http://", "https://")):
-            raise ValueError("base_url must start with http:// or https://")
+        if not host:
+            raise ValueError("host cannot be empty")
+        if not is_valid_host(host):
+            raise ValueError(
+                "host must be a valid DNS hostname. "
+                "Do not include protocol (http://, https://), port numbers, or path separators."
+            )
         if not username:
             raise ValueError("username cannot be empty")
         if not password:
             raise ValueError("password cannot be empty")
 
-        self.base_url = base_url.rstrip("/")
+        # Construct base_url from host and use_ssl
+        protocol = "https://" if use_ssl else "http://"
+        self.base_url = protocol + host + "/api"
+        self.host = host
+        self.use_ssl = use_ssl
         self.username = username
         self.password = password
         self.client = client
-        self.auth = auth or JwtAuthManager(base_url, username, password, client)
+        self.auth = auth or JwtAuthManager(host, username, password, client, use_ssl)
         self._register_cache: dict[str, RegisterInfo] | None = None
 
     async def _get_with_auth(
@@ -114,7 +131,7 @@ class EgaugeJsonClient:
         if self._register_cache is not None:
             return self._register_cache
 
-        url = f"{self.base_url}/api/register"
+        url = f"{self.base_url}/register"
         response = await self._get_with_auth(url)
         response.raise_for_status()
 
@@ -157,7 +174,7 @@ class EgaugeJsonClient:
         Returns:
             Dictionary mapping register name to current rate value (already in physical units)
         """
-        url = f"{self.base_url}/api/register"
+        url = f"{self.base_url}/register"
         params: dict[str, str] = {"rate": ""}
 
         # Filter to specific registers if requested
@@ -217,7 +234,7 @@ class EgaugeJsonClient:
             # Get specific counters
             solar = await client.get_current_counters(["Solar"])
         """
-        url = f"{self.base_url}/api/register"
+        url = f"{self.base_url}/register"
         params: dict[str, str] = {"time": "now"}
 
         # Filter to specific registers if requested
@@ -318,7 +335,7 @@ class EgaugeJsonClient:
             - "ts": datetime (timestamp)
             - Register names mapped to physical cumulative values (float, in rate_unit·seconds)
         """
-        url = f"{self.base_url}/api/register"
+        url = f"{self.base_url}/register"
 
         # Convert datetimes to Unix timestamps
         start_ts = int(start_time.timestamp())
@@ -400,7 +417,7 @@ class EgaugeJsonClient:
             EgaugeAuthenticationError: If authentication fails
             EgaugeParsingException: If response format is unexpected
         """
-        url = f"{self.base_url}/api/auth/rights"
+        url = f"{self.base_url}/auth/rights"
         response = await self._get_with_auth(url)
         response.raise_for_status()
 
@@ -426,7 +443,7 @@ class EgaugeJsonClient:
             EgaugeParsingException: If response format is unexpected
             httpx.HTTPStatusError: For other HTTP errors
         """
-        url = f"{self.base_url}/api/sys/sn"
+        url = f"{self.base_url}/sys/sn"
 
         try:
             response = await self._get_with_auth(url)
@@ -466,7 +483,7 @@ class EgaugeJsonClient:
             EgaugeParsingException: If response format is unexpected
             httpx.HTTPStatusError: For other HTTP errors
         """
-        url = f"{self.base_url}/api/config/net/hostname"
+        url = f"{self.base_url}/config/net/hostname"
 
         try:
             response = await self._get_with_auth(url)

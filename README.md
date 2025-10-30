@@ -66,13 +66,13 @@ uv run pytest
 uv run pytest --cov=egauge_async
 
 # Run integration tests (requires real eGauge device)
-export EGAUGE_URL="https://egauge12345.local"
+export EGAUGE_HOST="egauge12345.local"
 export EGAUGE_USERNAME="owner"
 export EGAUGE_PASSWORD="your_password"
 uv run pytest -m integration
 ```
 
-Integration tests validate functionality against a real eGauge device and are automatically skipped if the required environment variables (`EGAUGE_URL`, `EGAUGE_USERNAME`, `EGAUGE_PASSWORD`) are not set.
+Integration tests validate functionality against a real eGauge device and are automatically skipped if the required environment variables (`EGAUGE_HOST`, `EGAUGE_USERNAME`, `EGAUGE_PASSWORD`) are not set.
 
 ## Disclaimer
 

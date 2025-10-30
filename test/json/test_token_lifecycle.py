@@ -86,7 +86,7 @@ def test_parse_jwt_expiry_with_padding():
 def test_is_token_valid_no_token():
     """Test _is_token_valid returns False when no token is set"""
     mock_client = MockAsyncClient("https://egauge.local", {})
-    auth = JwtAuthManager("https://egauge.local", "owner", "password", mock_client)
+    auth = JwtAuthManager("egauge.local", "owner", "password", mock_client)
 
     assert not auth._is_token_valid()
 
@@ -95,7 +95,7 @@ def test_is_token_valid_expired_token():
     """Test _is_token_valid returns False for expired token"""
     mock_client = MockAsyncClient("https://egauge.local", {})
     auth = JwtAuthManager(
-        "https://egauge.local",
+        "egauge.local",
         "owner",
         "password",
         mock_client,
@@ -116,7 +116,7 @@ def test_is_token_valid_valid_token():
     """Test _is_token_valid returns True for valid token"""
     mock_client = MockAsyncClient("https://egauge.local", {})
     auth = JwtAuthManager(
-        "https://egauge.local",
+        "egauge.local",
         "owner",
         "password",
         mock_client,
@@ -141,14 +141,14 @@ async def test_get_token_refreshes_near_expiry():
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler(
-        "/api/auth/unauthorized",
+        "/auth/unauthorized",
         {"rlm": "eGauge", "nnc": "nonce123", "error": "Auth required"},
         status_code=401,
     )
-    mock_client.add_post_handler("/api/auth/login", {"jwt": new_jwt})
+    mock_client.add_post_handler("/auth/login", {"jwt": new_jwt})
 
     auth = JwtAuthManager(
-        "https://egauge.local",
+        "egauge.local",
         "owner",
         "password",
         mock_client,
@@ -176,7 +176,7 @@ async def test_get_token_no_refresh_when_valid():
     # No handlers - should never be called
 
     auth = JwtAuthManager(
-        "https://egauge.local",
+        "egauge.local",
         "owner",
         "password",
         mock_client,
@@ -205,14 +205,14 @@ async def test_concurrent_get_token_single_refresh():
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler(
-        "/api/auth/unauthorized",
+        "/auth/unauthorized",
         {"rlm": "eGauge", "nnc": "nonce", "error": "Auth required"},
         status_code=401,
     )
-    mock_client.add_post_handler("/api/auth/login", {"jwt": refreshed_jwt})
+    mock_client.add_post_handler("/auth/login", {"jwt": refreshed_jwt})
 
     auth = JwtAuthManager(
-        "https://egauge.local",
+        "egauge.local",
         "owner",
         "password",
         mock_client,
@@ -243,7 +243,7 @@ async def test_concurrent_get_token_single_refresh():
 async def test_invalidate_token_clears_state():
     """Test that invalidate_token() clears token state"""
     mock_client = MockAsyncClient("https://egauge.local", {})
-    auth = JwtAuthManager("https://egauge.local", "owner", "password", mock_client)
+    auth = JwtAuthManager("egauge.local", "owner", "password", mock_client)
 
     # Set token
     auth._token_state = _TokenState(
@@ -261,7 +261,7 @@ async def test_invalidate_token_clears_state():
 async def test_invalidate_token_when_no_token():
     """Test that invalidate_token() is safe when no token is set"""
     mock_client = MockAsyncClient("https://egauge.local", {})
-    auth = JwtAuthManager("https://egauge.local", "owner", "password", mock_client)
+    auth = JwtAuthManager("egauge.local", "owner", "password", mock_client)
 
     # Should not raise any errors
     await auth.invalidate_token()
@@ -283,7 +283,7 @@ async def test_client_401_triggers_refresh_and_retry():
         nonlocal register_call_count
 
         # Handle auth endpoints
-        if "/api/auth/unauthorized" in url:
+        if "/auth/unauthorized" in url:
             return MockResponse(
                 json_module.dumps(
                     {"rlm": "eGauge", "nnc": "nonce", "error": "Auth required"}
@@ -292,7 +292,7 @@ async def test_client_401_triggers_refresh_and_retry():
             )
 
         # Handle register endpoint
-        if "/api/register" in url:
+        if "/register" in url:
             register_call_count += 1
             if register_call_count == 1:
                 # First call: return 401
@@ -312,9 +312,9 @@ async def test_client_401_triggers_refresh_and_retry():
 
     mock_client = MultiResponseClient()
     mock_client.get = get_handler
-    mock_client.add_post_handler("/api/auth/login", {"jwt": new_jwt})
+    mock_client.add_post_handler("/auth/login", {"jwt": new_jwt})
 
-    auth = JwtAuthManager("https://egauge.local", "owner", "password", mock_client)
+    auth = JwtAuthManager("egauge.local", "owner", "password", mock_client)
 
     # Set initial valid token
     auth._token_state = _TokenState(
@@ -324,7 +324,7 @@ async def test_client_401_triggers_refresh_and_retry():
     )
 
     client = EgaugeJsonClient(
-        "https://egauge.local", "owner", "password", mock_client, auth
+        "egauge.local", "owner", "password", mock_client, auth=auth
     )
 
     # Make request - should succeed after retry
@@ -343,7 +343,7 @@ async def test_client_double_401_raises_error():
     # Create a handler that returns nonce but login fails with 401
     async def handler_with_failed_login(url, **kwargs):
         """Mock handler that provides nonce but fails login"""
-        if "/api/auth/unauthorized" in url:
+        if "/auth/unauthorized" in url:
             # Return proper nonce response with 401
             return MockResponse(
                 json_module.dumps(
@@ -364,7 +364,7 @@ async def test_client_double_401_raises_error():
     # Override post to fail login attempts
     mock_client.post = failed_post_handler
 
-    auth = JwtAuthManager("https://egauge.local", "owner", "password", mock_client)
+    auth = JwtAuthManager("egauge.local", "owner", "password", mock_client)
 
     # Set initial token
     auth._token_state = _TokenState(
@@ -374,7 +374,7 @@ async def test_client_double_401_raises_error():
     )
 
     client = EgaugeJsonClient(
-        "https://egauge.local", "owner", "password", mock_client, auth
+        "egauge.local", "owner", "password", mock_client, auth=auth
     )
 
     # Should raise after second 401
@@ -389,16 +389,16 @@ async def test_authentication_fails_with_invalid_jwt():
     """Test that authentication raises exception when JWT parsing fails"""
     mock_client = MultiResponseClient()
     mock_client.add_get_handler(
-        "/api/auth/unauthorized",
+        "/auth/unauthorized",
         {"rlm": "eGauge", "nnc": "nonce", "error": "Auth required"},
         status_code=401,
     )
     # Return a JWT with invalid base64 payload
     mock_client.add_post_handler(
-        "/api/auth/login", {"jwt": "header.!!!invalid!!.signature"}
+        "/auth/login", {"jwt": "header.!!!invalid!!.signature"}
     )
 
-    auth = JwtAuthManager("https://egauge.local", "owner", "password", mock_client)
+    auth = JwtAuthManager("egauge.local", "owner", "password", mock_client)
 
     # Should raise EgaugeParsingException from JWT parsing (not auth error)
     with pytest.raises(EgaugeParsingException, match="Failed to decode JWT payload"):
@@ -413,7 +413,7 @@ def test_refresh_buffer_validation():
     # Test negative buffer
     with pytest.raises(ValueError, match="must be between 1 and 600"):
         JwtAuthManager(
-            "https://egauge.local",
+            "egauge.local",
             "owner",
             "password",
             mock_client,
@@ -423,7 +423,7 @@ def test_refresh_buffer_validation():
     # Test zero buffer
     with pytest.raises(ValueError, match="must be between 1 and 600"):
         JwtAuthManager(
-            "https://egauge.local",
+            "egauge.local",
             "owner",
             "password",
             mock_client,
@@ -433,7 +433,7 @@ def test_refresh_buffer_validation():
     # Test buffer too large
     with pytest.raises(ValueError, match="must be between 1 and 600"):
         JwtAuthManager(
-            "https://egauge.local",
+            "egauge.local",
             "owner",
             "password",
             mock_client,
@@ -445,7 +445,7 @@ def test_custom_refresh_buffer():
     """Test that custom refresh buffer is respected"""
     mock_client = MockAsyncClient("https://egauge.local", {})
     auth = JwtAuthManager(
-        "https://egauge.local",
+        "egauge.local",
         "owner",
         "password",
         mock_client,

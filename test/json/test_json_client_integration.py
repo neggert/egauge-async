@@ -5,9 +5,10 @@ any device configuration without assumptions about specific registers.
 
 Setup:
     Set these environment variables before running:
-    - EGAUGE_URL: Full URL to eGauge device (e.g., "https://egauge12345.local")
+    - EGAUGE_HOST: Device hostname or IP (e.g., "egauge12345.local" or "192.168.1.100")
     - EGAUGE_USERNAME: Username for authentication (typically "owner")
     - EGAUGE_PASSWORD: Password for authentication
+    - EGAUGE_USE_SSL: (Optional) "true" for HTTPS, "false" for HTTP. Defaults to "true".
 
 Running:
     # Run only integration tests
@@ -52,22 +53,29 @@ def egauge_config():
     """Load eGauge connection details from environment variables.
 
     Returns:
-        dict with 'url', 'username', 'password' keys
+        dict with 'host', 'username', 'password', 'use_ssl' keys
 
     Raises:
         pytest.skip if required environment variables are not set
     """
-    url = os.environ.get("EGAUGE_URL")
+    host = os.environ.get("EGAUGE_HOST")
     username = os.environ.get("EGAUGE_USERNAME")
     password = os.environ.get("EGAUGE_PASSWORD")
+    use_ssl_str = os.environ.get("EGAUGE_USE_SSL", "true").lower()
+    use_ssl = use_ssl_str in ("true", "1", "yes")
 
-    if not all([url, username, password]):
+    if not all([host, username, password]):
         pytest.skip(
-            "Integration tests require EGAUGE_URL, EGAUGE_USERNAME, and "
+            "Integration tests require EGAUGE_HOST, EGAUGE_USERNAME, and "
             "EGAUGE_PASSWORD environment variables"
         )
 
-    return {"url": url, "username": username, "password": password}
+    return {
+        "host": host,
+        "username": username,
+        "password": password,
+        "use_ssl": use_ssl,
+    }
 
 
 @pytest_asyncio.fixture
@@ -93,10 +101,11 @@ async def real_client(egauge_config, http_client):
         EgaugeJsonClient instance connected to real eGauge device
     """
     client = EgaugeJsonClient(
-        base_url=egauge_config["url"],
+        host=egauge_config["host"],
         username=egauge_config["username"],
         password=egauge_config["password"],
         client=http_client,
+        use_ssl=egauge_config["use_ssl"],
     )
     yield client
 
@@ -146,10 +155,11 @@ async def test_auth_invalid_credentials(egauge_config, http_client):
     """Test that invalid credentials result in authentication error."""
     # Create client with wrong password
     client = EgaugeJsonClient(
-        base_url=egauge_config["url"],
+        host=egauge_config["host"],
         username=egauge_config["username"],
         password="definitely_wrong_password",
         client=http_client,
+        use_ssl=egauge_config["use_ssl"],
     )
 
     # Should raise authentication error

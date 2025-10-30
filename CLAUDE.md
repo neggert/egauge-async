@@ -41,7 +41,7 @@ Integration tests run against a real eGauge device to validate end-to-end functi
 Before running integration tests, set these environment variables:
 
 ```bash
-export EGAUGE_URL="https://egauge12345.local"  # Your eGauge device URL
+export EGAUGE_HOST="egauge12345.local"         # Your eGauge device hostname
 export EGAUGE_USERNAME="owner"                 # Username for authentication
 export EGAUGE_PASSWORD="your_password"         # Device password
 ```
