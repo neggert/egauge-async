@@ -1615,3 +1615,133 @@ async def test_get_hostname_authentication_failed():
         EgaugeAuthenticationError, match="Authentication failed after token refresh"
     ):
         await client.get_hostname()
+
+
+# Phase 8: get_model() tests
+@pytest.mark.asyncio
+async def test_get_model_success():
+    """Test successfully fetching device model name."""
+    response_data = {"result": "EG4030", "error": None}
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/sys/model", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
+    )
+
+    model = await client.get_model()
+
+    assert model == "EG4030"
+
+
+@pytest.mark.parametrize("model_name", ["EG4115", "EG3010", "egauge2"])
+@pytest.mark.asyncio
+async def test_get_model_various_models(model_name):
+    """Test different model names (EG4115, EG3010, etc.)."""
+    response_data = {"result": model_name, "error": None}
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/sys/model", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
+    )
+
+    model = await client.get_model()
+
+    assert model == model_name
+
+
+@pytest.mark.asyncio
+async def test_get_model_uses_bearer_auth():
+    """Test that get_model uses Bearer token authentication."""
+    response_data = {"result": "EG4030", "error": None}
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/sys/model", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
+    )
+
+    await client.get_model()
+
+    # Verify auth manager was called
+    assert mock_auth.get_token_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_get_model_missing_result_field():
+    """Test that missing result field raises EgaugeParsingException."""
+    response_data = {"error": None}  # No result field
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/sys/model", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
+    )
+
+    # Should raise exception since result field is missing
+    with pytest.raises(
+        EgaugeParsingException, match="Model response missing 'result' field"
+    ):
+        await client.get_model()
+
+
+@pytest.mark.asyncio
+async def test_get_model_permission_denied():
+    """Test that 401 with valid auth raises EgaugePermissionError.
+
+    Scenario: User is authenticated but lacks permission to read device settings.
+    - /sys/model returns 401 (permission denied)
+    - /auth/rights succeeds (user is authenticated)
+    - Should raise EgaugePermissionError (not EgaugeAuthenticationError)
+    """
+    # Mock client that returns 401 for model but 200 for rights
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/sys/model", {}, status_code=401)
+    mock_client.add_get_handler("/auth/rights", {"usr": "guest", "rights": []})
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "egauge12345.local", "guest", "pass", mock_client, auth=mock_auth
+    )
+
+    # Should raise permission error, not authentication error
+    with pytest.raises(
+        EgaugePermissionError,
+        match="User 'guest' lacks permission to read device settings",
+    ):
+        await client.get_model()
+
+
+@pytest.mark.asyncio
+async def test_get_model_authentication_failed():
+    """Test that 401 with invalid auth raises EgaugeAuthenticationError.
+
+    Scenario: Invalid credentials - both endpoints return 401.
+    - /sys/model returns 401 (authentication failed)
+    - /auth/rights also returns 401 (credentials truly invalid)
+    - Should raise EgaugeAuthenticationError
+    """
+    # Mock client that returns 401 for both endpoints
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/sys/model", {}, status_code=401)
+    mock_client.add_get_handler("/auth/rights", {}, status_code=401)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "egauge12345.local", "baduser", "badpass", mock_client, auth=mock_auth
+    )
+
+    # Should raise authentication error
+    with pytest.raises(
+        EgaugeAuthenticationError, match="Authentication failed after token refresh"
+    ):
+        await client.get_model()

@@ -774,3 +774,32 @@ async def test_hostname_consistent_across_calls(real_client):
 
     # Hostname should be the same every time
     assert hostname1 == hostname2
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_get_model(real_client):
+    """Test fetching device model name."""
+    model = await real_client.get_model()
+
+    # Should return a non-empty string
+    assert isinstance(model, str)
+    assert len(model) > 0
+
+    # Model names typically start with 'EG' or 'egauge'
+    # Examples: "EG4030", "EG4115", "EG3010", "egauge2"
+    model_lower = model.lower()
+    assert model_lower.startswith("eg") or "gauge" in model_lower, (
+        f"Model '{model}' doesn't match expected eGauge model naming convention"
+    )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_model_consistent_across_calls(real_client):
+    """Test that model name is consistent across multiple calls."""
+    model1 = await real_client.get_model()
+    model2 = await real_client.get_model()
+
+    # Model should be the same every time
+    assert model1 == model2
