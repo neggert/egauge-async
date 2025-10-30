@@ -29,7 +29,7 @@ pip install pandas matplotlib
 The examples use environment variables for configuration. Set these before running:
 
 ```bash
-export EGAUGE_URL="https://egauge12345.local"
+export EGAUGE_HOST="egauge12345.local"
 export EGAUGE_USERNAME="owner"
 export EGAUGE_PASSWORD="your_password"
 ```
@@ -38,7 +38,7 @@ Or create a `.env` file and source it:
 
 ```bash
 # .env file
-EGAUGE_URL=https://egauge12345.local
+EGAUGE_HOST=egauge12345.local
 EGAUGE_USERNAME=owner
 EGAUGE_PASSWORD=your_password
 ```
