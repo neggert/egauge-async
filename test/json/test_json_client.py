@@ -1648,7 +1648,7 @@ async def test_get_hostname_permission_denied():
     # Should raise permission error, not authentication error
     with pytest.raises(
         EgaugePermissionError,
-        match="User 'guest' lacks permission to read device configuration",
+        match="User 'guest' lacks permission to read device hostname. This endpoint requires view_settings privilege.",
     ):
         await client.get_hostname()
 
