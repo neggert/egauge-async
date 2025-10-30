@@ -1488,6 +1488,68 @@ async def test_get_device_serial_number_authentication_failed():
         await client.get_device_serial_number()
 
 
+# Phase 6.5: _disambiguate_auth_error() helper tests
+@pytest.mark.asyncio
+async def test_disambiguate_auth_error_raises_permission_error():
+    """Test that _disambiguate_auth_error raises EgaugePermissionError when user is authenticated.
+
+    Scenario: User is authenticated but lacks permissions.
+    - Original endpoint returned 401
+    - /auth/rights succeeds (user is authenticated)
+    - Should raise EgaugePermissionError with username in message
+    """
+    # Mock client that returns 200 for rights check
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/auth/rights", {"usr": "guest", "rights": []})
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "egauge12345.local", "guest", "pass", mock_client, auth=mock_auth
+    )
+
+    # Create original auth error to pass to helper
+    original_error = EgaugeAuthenticationError(
+        "Authentication failed after token refresh"
+    )
+
+    # Should raise permission error with username
+    with pytest.raises(
+        EgaugePermissionError,
+        match="User 'guest' lacks permission to read device model. This endpoint requires view_settings privilege.",
+    ):
+        await client._disambiguate_auth_error(original_error, "device model")
+
+
+@pytest.mark.asyncio
+async def test_disambiguate_auth_error_reraises_auth_error():
+    """Test that _disambiguate_auth_error re-raises original error when auth truly fails.
+
+    Scenario: Invalid credentials - auth rights check also fails.
+    - Original endpoint returned 401
+    - /auth/rights also returns 401 (credentials are invalid)
+    - Should re-raise the original EgaugeAuthenticationError
+    """
+    # Mock client that returns 401 for rights check
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/auth/rights", {}, status_code=401)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "egauge12345.local", "baduser", "badpass", mock_client, auth=mock_auth
+    )
+
+    # Create original auth error to pass to helper
+    original_error = EgaugeAuthenticationError(
+        "Authentication failed after token refresh"
+    )
+
+    # Should re-raise the original authentication error
+    with pytest.raises(
+        EgaugeAuthenticationError, match="Authentication failed after token refresh"
+    ):
+        await client._disambiguate_auth_error(original_error, "device model")
+
+
 # Phase 7: get_hostname() tests
 @pytest.mark.asyncio
 async def test_get_hostname_success():
