@@ -1636,25 +1636,23 @@ async def test_get_model_success():
     assert model == "EG4030"
 
 
+@pytest.mark.parametrize("model_name", ["EG4115", "EG3010", "egauge2"])
 @pytest.mark.asyncio
-async def test_get_model_various_models():
+async def test_get_model_various_models(model_name):
     """Test different model names (EG4115, EG3010, etc.)."""
-    test_models = ["EG4115", "EG3010", "egauge2"]
+    response_data = {"result": model_name, "error": None}
 
-    for model_name in test_models:
-        response_data = {"result": model_name, "error": None}
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/sys/model", response_data)
+    mock_auth = MockAuthManager()
 
-        mock_client = MultiResponseClient()
-        mock_client.add_get_handler("/sys/model", response_data)
-        mock_auth = MockAuthManager()
+    client = EgaugeJsonClient(
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
+    )
 
-        client = EgaugeJsonClient(
-            "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
-        )
+    model = await client.get_model()
 
-        model = await client.get_model()
-
-        assert model == model_name
+    assert model == model_name
 
 
 @pytest.mark.asyncio
