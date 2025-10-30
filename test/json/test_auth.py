@@ -251,9 +251,7 @@ async def test_fetch_nonce_success():
         status_code=401,
     )
 
-    handler = JwtAuthManager(
-        "https://egauge12345.local", "owner", "password", mock_client
-    )
+    handler = JwtAuthManager("egauge12345.local", "owner", "password", mock_client)
     nonce_response = await handler._fetch_nonce()
 
     assert nonce_response.realm == "eGauge Administration"
@@ -273,9 +271,7 @@ async def test_fetch_nonce_error():
         status_code=503,
     )
 
-    handler = JwtAuthManager(
-        "https://egauge12345.local", "owner", "password", mock_client
-    )
+    handler = JwtAuthManager("egauge12345.local", "owner", "password", mock_client)
 
     with pytest.raises(EgaugeAuthenticationError):
         await handler._fetch_nonce()
@@ -298,9 +294,7 @@ async def test_perform_login_success():
         "https://egauge12345.local/api/auth/login", response_data
     )
 
-    handler = JwtAuthManager(
-        "https://egauge12345.local", "owner", "testpass", mock_client
-    )
+    handler = JwtAuthManager("egauge12345.local", "owner", "testpass", mock_client)
     auth_response = await handler._perform_login(nonce_response)
 
     assert (
@@ -335,9 +329,7 @@ async def test_perform_login_invalid_credentials():
         "https://egauge12345.local/api/auth/login", response_data, status_code=200
     )
 
-    handler = JwtAuthManager(
-        "https://egauge12345.local", "owner", "wrongpass", mock_client
-    )
+    handler = JwtAuthManager("egauge12345.local", "owner", "wrongpass", mock_client)
 
     with pytest.raises(
         EgaugeAuthenticationError, match="Login failed: Invalid credentials"
@@ -362,9 +354,7 @@ async def test_perform_login_malformed_response():
         "https://egauge12345.local/api/auth/login", response_data, status_code=200
     )
 
-    handler = JwtAuthManager(
-        "https://egauge12345.local", "owner", "password", mock_client
-    )
+    handler = JwtAuthManager("egauge12345.local", "owner", "password", mock_client)
 
     with pytest.raises(
         EgaugeParsingException,
@@ -391,9 +381,7 @@ async def test_get_token_lazy_authentication():
     )
     mock_client.add_post_handler("/api/auth/login", {"jwt": test_jwt})
 
-    handler = JwtAuthManager(
-        "https://egauge12345.local", "owner", "password", mock_client
-    )
+    handler = JwtAuthManager("egauge12345.local", "owner", "password", mock_client)
 
     # First call should authenticate
     token = await handler.get_token()
@@ -424,9 +412,7 @@ async def test_get_token_caching():
     )
     mock_client.add_post_handler("/api/auth/login", {"jwt": test_jwt})
 
-    handler = JwtAuthManager(
-        "https://egauge12345.local", "owner", "password", mock_client
-    )
+    handler = JwtAuthManager("egauge12345.local", "owner", "password", mock_client)
 
     # First call
     token1 = await handler.get_token()
@@ -445,9 +431,7 @@ async def test_get_token_already_authenticated():
     """Test get_token() when token is already set"""
 
     mock_client = NeverCalledClient()
-    handler = JwtAuthManager(
-        "https://egauge12345.local", "owner", "password", mock_client
-    )
+    handler = JwtAuthManager("egauge12345.local", "owner", "password", mock_client)
 
     # Manually set token state with far-future expiration
     handler._token_state = _TokenState(
@@ -471,9 +455,7 @@ async def test_logout_success():
         "https://egauge12345.local/api/auth/logout", response_data
     )
 
-    handler = JwtAuthManager(
-        "https://egauge12345.local", "owner", "password", mock_client
-    )
+    handler = JwtAuthManager("egauge12345.local", "owner", "password", mock_client)
     # Set token state
     handler._token_state = _TokenState(
         token="test_token_to_revoke",
@@ -497,9 +479,7 @@ async def test_logout_when_not_authenticated():
     mock_client = MockAsyncClient(
         "https://egauge12345.local/api/auth/logout", response_data
     )
-    handler = JwtAuthManager(
-        "https://egauge12345.local", "owner", "password", mock_client
-    )
+    handler = JwtAuthManager("egauge12345.local", "owner", "password", mock_client)
 
     # No token set
     assert handler._token_state is None

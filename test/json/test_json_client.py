@@ -40,7 +40,7 @@ def test_init_stores_parameters():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        base_url="https://egauge12345.local",
+        host="egauge12345.local",
         username="owner",
         password="testpass",
         client=mock_client,
@@ -59,7 +59,7 @@ def test_init_creates_auth_manager():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        base_url="https://egauge12345.local",
+        host="egauge12345.local",
         username="owner",
         password="testpass",
         client=mock_client,
@@ -76,7 +76,7 @@ def test_init_initializes_register_cache():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        base_url="https://egauge12345.local",
+        host="egauge12345.local",
         username="owner",
         password="testpass",
         client=mock_client,
@@ -86,14 +86,14 @@ def test_init_initializes_register_cache():
     assert client._register_cache is None
 
 
-def test_init_validates_empty_base_url():
-    """Test that __init__ raises ValueError for empty base_url."""
+def test_init_validates_empty_host():
+    """Test that __init__ raises ValueError for empty host."""
     mock_client = MockAsyncClient("https://example.com", {})
     mock_auth = MockAuthManager()
 
-    with pytest.raises(ValueError, match="base_url cannot be empty"):
+    with pytest.raises(ValueError, match="host cannot be empty"):
         EgaugeJsonClient(
-            base_url="",
+            host="",
             username="owner",
             password="testpass",
             client=mock_client,
@@ -101,14 +101,16 @@ def test_init_validates_empty_base_url():
         )
 
 
-def test_init_validates_base_url_scheme():
-    """Test that __init__ raises ValueError for invalid URL scheme."""
+def test_init_validates_host_format():
+    """Test that __init__ raises ValueError for invalid host format."""
     mock_client = MockAsyncClient("https://example.com", {})
     mock_auth = MockAuthManager()
 
-    with pytest.raises(ValueError, match="must start with http:// or https://"):
+    with pytest.raises(
+        ValueError, match="host must be a valid DNS hostname or IPv4 address"
+    ):
         EgaugeJsonClient(
-            base_url="ftp://egauge.local",
+            host="https://egauge.local",
             username="owner",
             password="testpass",
             client=mock_client,
@@ -123,7 +125,7 @@ def test_init_validates_empty_username():
 
     with pytest.raises(ValueError, match="username cannot be empty"):
         EgaugeJsonClient(
-            base_url="https://egauge.local",
+            host="egauge.local",
             username="",
             password="testpass",
             client=mock_client,
@@ -138,7 +140,7 @@ def test_init_validates_empty_password():
 
     with pytest.raises(ValueError, match="password cannot be empty"):
         EgaugeJsonClient(
-            base_url="https://egauge.local",
+            host="egauge.local",
             username="owner",
             password="",
             client=mock_client,
@@ -153,7 +155,7 @@ async def test_close_calls_auth_logout():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        base_url="https://egauge.local",
+        host="egauge.local",
         username="owner",
         password="testpass",
         client=mock_client,
@@ -172,7 +174,7 @@ async def test_context_manager_calls_close():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        base_url="https://egauge.local",
+        host="egauge.local",
         username="owner",
         password="testpass",
         client=mock_client,
@@ -208,7 +210,7 @@ async def test_get_register_info_success():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     registers = await client.get_register_info()
@@ -237,7 +239,7 @@ async def test_get_register_info_caching():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     # First call
@@ -264,7 +266,7 @@ async def test_get_register_info_uses_bearer_auth():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     await client.get_register_info()
@@ -286,7 +288,7 @@ async def test_get_register_info_missing_name_field():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     # Should raise exception since name field is missing
@@ -307,7 +309,7 @@ async def test_get_register_info_missing_type_field():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     # Should raise exception since type field is missing
@@ -330,7 +332,7 @@ async def test_get_register_info_missing_idx_field():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     # Should raise exception since idx field is missing
@@ -357,7 +359,7 @@ async def test_get_current_measurements_all_registers():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     measurements = await client.get_current_measurements()
@@ -380,7 +382,7 @@ async def test_get_current_measurements_uses_rate_parameter():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     measurements = await client.get_current_measurements()
@@ -417,7 +419,7 @@ async def test_get_current_measurements_with_register_filter():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     # Pre-populate cache by calling get_register_info
@@ -464,7 +466,7 @@ async def test_get_current_measurements_no_rate_values():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     # Should raise exception since rate field is missing
@@ -490,7 +492,7 @@ async def test_get_current_measurements_unknown_register():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     # Pre-populate cache
@@ -518,7 +520,7 @@ async def test_get_current_measurements_missing_name_field():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     # Should raise exception since name field is missing
@@ -558,7 +560,7 @@ async def test_get_historical_counters_basic():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     start = datetime(2023, 3, 8, 12, 0, 0, tzinfo=timezone.utc)
@@ -617,7 +619,7 @@ async def test_get_historical_counters_multiple_ranges():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     start = datetime(2023, 3, 8, 12, 0, 0, tzinfo=timezone.utc)
@@ -665,7 +667,7 @@ async def test_get_historical_counters_with_register_filter():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     # Pre-populate cache
@@ -719,7 +721,7 @@ async def test_get_historical_counters_with_max_rows():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     start = datetime(2023, 3, 8, 12, 0, 0, tzinfo=timezone.utc)
@@ -763,7 +765,7 @@ async def test_get_historical_counters_unknown_register():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     # Pre-populate cache
@@ -795,7 +797,7 @@ async def test_get_historical_counters_missing_name_field():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     start = datetime(2023, 3, 8, 12, 0, 0, tzinfo=timezone.utc)
@@ -820,7 +822,7 @@ async def test_get_historical_counters_missing_type_field():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     start = datetime(2023, 3, 8, 12, 0, 0, tzinfo=timezone.utc)
@@ -862,7 +864,7 @@ async def test_get_current_counters_all_registers():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     counters = await client.get_current_counters()
@@ -885,7 +887,7 @@ async def test_get_current_counters_uses_time_now_parameter():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     counters = await client.get_current_counters()
@@ -916,7 +918,7 @@ async def test_get_current_counters_uses_bearer_auth():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     await client.get_current_counters()
@@ -943,7 +945,7 @@ async def test_get_current_counters_with_register_filter():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     # Pre-populate cache by calling get_register_info
@@ -989,7 +991,7 @@ async def test_get_current_counters_unknown_register():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     # Pre-populate cache
@@ -1015,7 +1017,7 @@ async def test_get_current_counters_missing_name_field():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     # Should raise exception since name field is missing
@@ -1036,7 +1038,7 @@ async def test_get_current_counters_missing_type_field():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     # Should raise exception since type field is missing
@@ -1068,7 +1070,7 @@ async def test_get_current_counters_quantum_conversion():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     counters = await client.get_current_counters()
@@ -1092,7 +1094,7 @@ async def test_get_current_counters_missing_ranges():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     with pytest.raises(
@@ -1115,7 +1117,7 @@ async def test_get_current_counters_empty_ranges():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     with pytest.raises(
@@ -1141,7 +1143,7 @@ async def test_get_current_counters_multiple_ranges():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     with pytest.raises(
@@ -1165,7 +1167,7 @@ async def test_get_current_counters_missing_rows_field():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     with pytest.raises(
@@ -1187,7 +1189,7 @@ async def test_get_current_counters_empty_rows():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     with pytest.raises(EgaugeParsingException, match="Range 'rows' array is empty"):
@@ -1213,7 +1215,7 @@ async def test_get_current_counters_multiple_rows():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     with pytest.raises(
@@ -1233,7 +1235,7 @@ async def test_get_user_rights_success():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     user_rights = await client.get_user_rights()
@@ -1252,7 +1254,7 @@ async def test_get_user_rights_empty_rights():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     user_rights = await client.get_user_rights()
@@ -1271,7 +1273,7 @@ async def test_get_user_rights_uses_bearer_auth():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     await client.get_user_rights()
@@ -1290,7 +1292,7 @@ async def test_get_user_rights_missing_usr_field():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     # Should raise exception since usr field is missing
@@ -1310,7 +1312,7 @@ async def test_get_user_rights_missing_rights_field():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     # Should raise exception since rights field is missing
@@ -1331,7 +1333,7 @@ async def test_get_device_serial_number_success():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     serial_number = await client.get_device_serial_number()
@@ -1349,7 +1351,7 @@ async def test_get_device_serial_number_alphanumeric():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     serial_number = await client.get_device_serial_number()
@@ -1367,7 +1369,7 @@ async def test_get_device_serial_number_uses_bearer_auth():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     await client.get_device_serial_number()
@@ -1386,7 +1388,7 @@ async def test_get_device_serial_number_missing_result_field():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     # Should raise exception since result field is missing
@@ -1460,7 +1462,7 @@ async def test_get_hostname_success():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     hostname = await client.get_hostname()
@@ -1478,7 +1480,7 @@ async def test_get_hostname_with_dashes():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     hostname = await client.get_hostname()
@@ -1496,7 +1498,7 @@ async def test_get_hostname_uses_bearer_auth():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     await client.get_hostname()
@@ -1515,7 +1517,7 @@ async def test_get_hostname_missing_result_field():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "owner", "pass", mock_client, mock_auth
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
     )
 
     # Should raise exception since result field is missing
