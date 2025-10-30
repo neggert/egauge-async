@@ -431,6 +431,34 @@ class EgaugeJsonClient:
 
         return UserRights(usr=data["usr"], rights=data["rights"])
 
+    async def _disambiguate_auth_error(
+        self, auth_error: EgaugeAuthenticationError, endpoint_description: str
+    ) -> None:
+        """Helper to distinguish between auth failure and permission denial.
+
+        When a 401 error occurs, it could mean either invalid credentials OR
+        valid credentials with insufficient permissions. This method probes with
+        get_user_rights() to determine which case applies.
+
+        Args:
+            auth_error: The original authentication error
+            endpoint_description: Brief description of the endpoint (e.g., "device serial number")
+
+        Raises:
+            EgaugePermissionError: If user is authenticated but lacks view_settings permission
+            EgaugeAuthenticationError: If credentials are truly invalid (re-raises original)
+        """
+        try:
+            user_rights = await self.get_user_rights()
+            # If we got here, user is authenticated but lacks permission
+            raise EgaugePermissionError(
+                f"User '{user_rights.usr}' lacks permission to read {endpoint_description}. "
+                f"This endpoint requires view_settings privilege."
+            ) from auth_error
+        except EgaugeAuthenticationError:
+            # User rights also failed - credentials are truly invalid
+            raise auth_error
+
     async def get_device_serial_number(self) -> str:
         """Get the device serial number.
 
