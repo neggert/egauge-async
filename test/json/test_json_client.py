@@ -148,6 +148,161 @@ def test_init_validates_empty_password():
         )
 
 
+# Host validation tests
+def test_init_validates_host_with_protocol_prefix():
+    """Test that __init__ raises ValueError for host with http:// prefix."""
+    mock_client = MockAsyncClient("https://example.com", {})
+    mock_auth = MockAuthManager()
+
+    with pytest.raises(
+        ValueError, match="host must be a valid DNS hostname or IPv4 address"
+    ):
+        EgaugeJsonClient(
+            host="http://egauge.local",
+            username="owner",
+            password="testpass",
+            client=mock_client,
+            auth=mock_auth,
+        )
+
+
+def test_init_validates_host_with_https_prefix():
+    """Test that __init__ raises ValueError for host with https:// prefix."""
+    mock_client = MockAsyncClient("https://example.com", {})
+    mock_auth = MockAuthManager()
+
+    with pytest.raises(
+        ValueError, match="host must be a valid DNS hostname or IPv4 address"
+    ):
+        EgaugeJsonClient(
+            host="https://egauge.local",
+            username="owner",
+            password="testpass",
+            client=mock_client,
+            auth=mock_auth,
+        )
+
+
+def test_init_validates_host_with_port_number():
+    """Test that __init__ raises ValueError for host with port number."""
+    mock_client = MockAsyncClient("https://example.com", {})
+    mock_auth = MockAuthManager()
+
+    with pytest.raises(
+        ValueError, match="host must be a valid DNS hostname or IPv4 address"
+    ):
+        EgaugeJsonClient(
+            host="egauge.local:8080",
+            username="owner",
+            password="testpass",
+            client=mock_client,
+            auth=mock_auth,
+        )
+
+
+def test_init_validates_host_with_path_separator():
+    """Test that __init__ raises ValueError for host with path separator."""
+    mock_client = MockAsyncClient("https://example.com", {})
+    mock_auth = MockAuthManager()
+
+    with pytest.raises(
+        ValueError, match="host must be a valid DNS hostname or IPv4 address"
+    ):
+        EgaugeJsonClient(
+            host="egauge.local/",
+            username="owner",
+            password="testpass",
+            client=mock_client,
+            auth=mock_auth,
+        )
+
+
+def test_init_validates_host_with_path():
+    """Test that __init__ raises ValueError for host with path."""
+    mock_client = MockAsyncClient("https://example.com", {})
+    mock_auth = MockAuthManager()
+
+    with pytest.raises(
+        ValueError, match="host must be a valid DNS hostname or IPv4 address"
+    ):
+        EgaugeJsonClient(
+            host="egauge.local/api/register",
+            username="owner",
+            password="testpass",
+            client=mock_client,
+            auth=mock_auth,
+        )
+
+
+def test_init_accepts_valid_ipv4_address():
+    """Test that __init__ accepts valid IPv4 address."""
+    mock_client = MockAsyncClient("https://example.com", {})
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        host="192.168.1.100",
+        username="owner",
+        password="testpass",
+        client=mock_client,
+        auth=mock_auth,
+    )
+
+    assert client.host == "192.168.1.100"
+    assert client.base_url == "https://192.168.1.100"
+
+
+def test_init_accepts_valid_dns_hostname():
+    """Test that __init__ accepts valid DNS hostname."""
+    mock_client = MockAsyncClient("https://example.com", {})
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        host="egauge12345.local",
+        username="owner",
+        password="testpass",
+        client=mock_client,
+        auth=mock_auth,
+    )
+
+    assert client.host == "egauge12345.local"
+    assert client.base_url == "https://egauge12345.local"
+
+
+def test_init_accepts_dns_hostname_with_subdomain():
+    """Test that __init__ accepts DNS hostname with subdomain."""
+    mock_client = MockAsyncClient("https://example.com", {})
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        host="meter.example.com",
+        username="owner",
+        password="testpass",
+        client=mock_client,
+        auth=mock_auth,
+    )
+
+    assert client.host == "meter.example.com"
+    assert client.base_url == "https://meter.example.com"
+
+
+def test_init_use_ssl_false_creates_http_url():
+    """Test that use_ssl=False creates HTTP URL instead of HTTPS."""
+    mock_client = MockAsyncClient("http://example.com", {})
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        host="egauge.local",
+        username="owner",
+        password="testpass",
+        client=mock_client,
+        use_ssl=False,
+        auth=mock_auth,
+    )
+
+    assert client.use_ssl is False
+    assert client.base_url == "http://egauge.local"
+
+
 @pytest.mark.asyncio
 async def test_close_calls_auth_logout():
     """Test that close() method calls auth.logout()."""
@@ -1414,7 +1569,7 @@ async def test_get_device_serial_number_permission_denied():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "guest", "pass", mock_client, mock_auth
+        "egauge12345.local", "guest", "pass", mock_client, auth=mock_auth
     )
 
     # Should raise permission error, not authentication error
@@ -1441,7 +1596,7 @@ async def test_get_device_serial_number_authentication_failed():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "baduser", "badpass", mock_client, mock_auth
+        "egauge12345.local", "baduser", "badpass", mock_client, auth=mock_auth
     )
 
     # Should raise authentication error
@@ -1543,7 +1698,7 @@ async def test_get_hostname_permission_denied():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "guest", "pass", mock_client, mock_auth
+        "egauge12345.local", "guest", "pass", mock_client, auth=mock_auth
     )
 
     # Should raise permission error, not authentication error
@@ -1570,7 +1725,7 @@ async def test_get_hostname_authentication_failed():
     mock_auth = MockAuthManager()
 
     client = EgaugeJsonClient(
-        "https://egauge12345.local", "baduser", "badpass", mock_client, mock_auth
+        "egauge12345.local", "baduser", "badpass", mock_client, auth=mock_auth
     )
 
     # Should raise authentication error
