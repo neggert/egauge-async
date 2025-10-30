@@ -43,18 +43,18 @@ from egauge_async.json.client import EgaugeJsonClient
 
 async def main() -> None:
     # Get connection details from environment variables
-    base_url = os.environ.get("EGAUGE_URL", "https://egauge12345.local")
+    host = os.environ.get("EGAUGE_HOST", "egauge12345.local")
     username = os.environ.get("EGAUGE_USERNAME", "owner")
     password = os.environ.get("EGAUGE_PASSWORD", "default")
 
-    print(f"Connecting to eGauge device at {base_url}...")
+    print(f"Connecting to eGauge device at {host}...")
     print()
 
     # Create HTTP client with SSL verification disabled (eGauges use self-signed certs)
     async with httpx.AsyncClient(verify=False) as http_client:
         # Create eGauge JSON client
         client = EgaugeJsonClient(
-            base_url=base_url,
+            host=host,
             username=username,
             password=password,
             client=http_client,
