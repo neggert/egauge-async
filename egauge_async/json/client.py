@@ -1,4 +1,5 @@
 from datetime import datetime as dt, timedelta, timezone
+from typing import NoReturn
 
 import httpx
 
@@ -431,6 +432,34 @@ class EgaugeJsonClient:
 
         return UserRights(usr=data["usr"], rights=data["rights"])
 
+    async def _disambiguate_auth_error(
+        self, auth_error: EgaugeAuthenticationError, endpoint_description: str
+    ) -> NoReturn:
+        """Helper to distinguish between auth failure and permission denial.
+
+        When a 401 error occurs, it could mean either invalid credentials OR
+        valid credentials with insufficient permissions. This method probes with
+        get_user_rights() to determine which case applies.
+
+        Args:
+            auth_error: The original authentication error
+            endpoint_description: Brief description of the endpoint (e.g., "device serial number")
+
+        Raises:
+            EgaugePermissionError: If user is authenticated but lacks view_settings permission
+            EgaugeAuthenticationError: If credentials are truly invalid (re-raises original)
+        """
+        try:
+            user_rights = await self.get_user_rights()
+            # If we got here, user is authenticated but lacks permission
+            raise EgaugePermissionError(
+                f"User '{user_rights.usr}' lacks permission to read {endpoint_description}. "
+                f"This endpoint requires view_settings privilege."
+            ) from auth_error
+        except EgaugeAuthenticationError:
+            # User rights also failed - credentials are truly invalid
+            raise auth_error
+
     async def get_device_serial_number(self) -> str:
         """Get the device serial number.
 
@@ -449,18 +478,7 @@ class EgaugeJsonClient:
             response = await self._get_with_auth(url)
             response.raise_for_status()
         except EgaugeAuthenticationError as auth_error:
-            # Got 401 after retry - could be auth failure OR permission denied
-            # Try to fetch user rights to distinguish between the two cases
-            try:
-                user_rights = await self.get_user_rights()
-                # If we got here, user is authenticated but lacks permission
-                raise EgaugePermissionError(
-                    f"User '{user_rights.usr}' lacks permission to read device settings. "
-                    f"This endpoint requires access to device configuration."
-                ) from auth_error
-            except EgaugeAuthenticationError:
-                # User rights also failed - credentials are truly invalid
-                raise auth_error
+            await self._disambiguate_auth_error(auth_error, "device serial number")
 
         data = response.json()
 
@@ -489,18 +507,7 @@ class EgaugeJsonClient:
             response = await self._get_with_auth(url)
             response.raise_for_status()
         except EgaugeAuthenticationError as auth_error:
-            # Got 401 after retry - could be auth failure OR permission denied
-            # Try to fetch user rights to distinguish between the two cases
-            try:
-                user_rights = await self.get_user_rights()
-                # If we got here, user is authenticated but lacks permission
-                raise EgaugePermissionError(
-                    f"User '{user_rights.usr}' lacks permission to read device configuration. "
-                    f"This endpoint requires access to network settings."
-                ) from auth_error
-            except EgaugeAuthenticationError:
-                # User rights also failed - credentials are truly invalid
-                raise auth_error
+            await self._disambiguate_auth_error(auth_error, "device hostname")
 
         data = response.json()
 
@@ -527,18 +534,7 @@ class EgaugeJsonClient:
             response = await self._get_with_auth(url)
             response.raise_for_status()
         except EgaugeAuthenticationError as auth_error:
-            # Got 401 after retry - could be auth failure OR permission denied
-            # Try to fetch user rights to distinguish between the two cases
-            try:
-                user_rights = await self.get_user_rights()
-                # If we got here, user is authenticated but lacks permission
-                raise EgaugePermissionError(
-                    f"User '{user_rights.usr}' lacks permission to read device settings. "
-                    f"This endpoint requires view_settings privilege."
-                ) from auth_error
-            except EgaugeAuthenticationError:
-                # User rights also failed - credentials are truly invalid
-                raise auth_error
+            await self._disambiguate_auth_error(auth_error, "device model")
 
         data = response.json()
 
