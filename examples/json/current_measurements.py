@@ -41,6 +41,10 @@ async def main() -> None:
             client=http_client,
         )
 
+        epoch = await client.get_epoch_timestamp()
+        print(f"Device epoch timestamp: {epoch} (UTC)")
+        print()
+
         # Step 1: Get register metadata
         print("=" * 80)
         print("REGISTER INFORMATION")

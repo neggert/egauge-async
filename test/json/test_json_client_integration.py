@@ -687,6 +687,18 @@ async def test_consistency_historical_vs_current(real_client):
         assert len(current_names & historical_names) > 0
 
 
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_get_epoch_timestamp(real_client):
+    """Test fetching epoch timestamp."""
+    epoch_timestamp = await real_client.get_epoch_timestamp()
+
+    assert isinstance(epoch_timestamp, datetime)
+    assert epoch_timestamp.timestamp() > 0
+    assert epoch_timestamp.tzinfo is not None
+    assert epoch_timestamp < datetime.now(timezone.utc)
+
+
 # ============================================================================
 # G. User Rights and Device Serial Number Tests
 # ============================================================================

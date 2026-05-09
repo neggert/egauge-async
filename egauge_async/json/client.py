@@ -8,6 +8,7 @@ from egauge_async.json.models import RegisterType, RegisterInfo, UserRights
 from egauge_async.json.type_codes import get_quantum
 from egauge_async.utils import is_valid_host
 from egauge_async.exceptions import (
+    EgaugeErrorResponse,
     EgaugeUnknownRegisterError,
     EgaugeParsingException,
     EgaugeAuthenticationError,
@@ -407,6 +408,35 @@ class EgaugeJsonClient:
                 result.append(row_dict)
 
         return result
+
+    async def get_epoch_timestamp(self) -> dt:
+        """Get the epoch timestamp for cumulative counters.
+
+        The eGauge's cumulative counters represent the total accumulated value since a specific epoch time.
+        This method retrieves that epoch timestamp, which is essential for interpreting counter values.
+
+        Returns:
+            Epoch timestamp as a timezone-aware datetime in UTC
+        """
+
+        url = f"{self.base_url}/config/db/epoch"
+        try:
+            response = await self._get_with_auth(url)
+            response.raise_for_status()
+        except EgaugeAuthenticationError as auth_error:
+            await self._disambiguate_auth_error(auth_error, "device hostname")
+
+        data = response.json()
+
+        if "error" in data and data["error"]:
+            raise EgaugeErrorResponse(data["error"])
+
+        if "result" not in data:
+            raise EgaugeParsingException(
+                "Epoch timestamp response missing 'result' field"
+            )
+
+        return dt.fromtimestamp(float(data["result"]), tz=timezone.utc)
 
     async def get_user_rights(self) -> UserRights:
         """Get authenticated user's rights and privileges.

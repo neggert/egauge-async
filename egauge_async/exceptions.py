@@ -16,6 +16,18 @@ class EgaugeHTTPErrorCode(EgaugeException):
         super().__init__(self.message)
 
 
+class EgaugeErrorResponse(EgaugeException):
+    """Exception raised when the eGauge API responds with an error message
+
+    Attributes:
+        error_message: The error message returned by the API (e.g. "Invalid credentials")
+    """
+
+    def __init__(self, error_message: str):
+        self.message = f"Egauge replied with error: {error_message}"
+        super().__init__(self.message)
+
+
 class EgaugeParsingException(EgaugeException):
     pass
 

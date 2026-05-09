@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, timezone
 from egauge_async.json.client import EgaugeJsonClient
 from egauge_async.json.models import RegisterType
 from egauge_async.exceptions import (
+    EgaugeErrorResponse,
     EgaugeUnknownRegisterError,
     EgaugeParsingException,
     EgaugePermissionError,
@@ -1259,6 +1260,135 @@ async def test_get_current_counters_multiple_rows():
         EgaugeParsingException, match="Expected 1 row for time=now query, got 2"
     ):
         await client.get_current_counters()
+
+
+@pytest.mark.asyncio
+async def test_get_epoch_timestamp_success():
+    """Test successfully fetching epoch timestamp."""
+    response_data = {"result": "1678298313.000", "error": None}
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/config/db/epoch", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
+    )
+
+    epoch_timestamp = await client.get_epoch_timestamp()
+
+    assert epoch_timestamp == datetime.fromtimestamp(1678298313.000, tz=timezone.utc)
+
+
+@pytest.mark.asyncio
+async def test_get_epoch_timestamp_error():
+    """Test fetching epoch timestamp when API returns an error."""
+    response_data = {"result": "1678298313.000", "error": "Egauge error occurred"}
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/config/db/epoch", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
+    )
+
+    with pytest.raises(
+        EgaugeErrorResponse, match="Egauge replied with error: Egauge error occurred"
+    ):
+        await client.get_epoch_timestamp()
+
+
+@pytest.mark.asyncio
+async def test_get_epoch_timestamp_missing_result_field():
+    """Test that missing result field raises EgaugeParsingException."""
+    response_data = {"error": None}  # No result field
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/config/db/epoch", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
+    )
+
+    # Should raise exception since result field is missing
+    with pytest.raises(
+        EgaugeParsingException, match="Epoch timestamp response missing 'result' field"
+    ):
+        await client.get_epoch_timestamp()
+
+
+@pytest.mark.asyncio
+async def test_get_epoch_timestamp_uses_bearer_auth():
+    """Test that get_epoch_timestamp uses Bearer token authentication."""
+    response_data = {"result": "1678298313.000", "error": None}
+
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/config/db/epoch", response_data)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "egauge12345.local", "owner", "pass", mock_client, auth=mock_auth
+    )
+
+    await client.get_epoch_timestamp()
+
+    # Verify auth manager was called
+    assert mock_auth.get_token_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_get_epoch_timestamp_permission_denied():
+    """Test that 401 with valid auth raises EgaugePermissionError.
+
+    Scenario: User is authenticated but lacks permission to read network configuration.
+    - /config/db/epoch returns 401 (permission denied)
+    - /auth/rights succeeds (user is authenticated)
+    - Should raise EgaugePermissionError (not EgaugeAuthenticationError)
+    """
+    # Mock client that returns 401 for epoch timestamp but 200 for rights
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/config/db/epoch", {}, status_code=401)
+    mock_client.add_get_handler("/auth/rights", {"usr": "guest", "rights": []})
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "egauge12345.local", "guest", "pass", mock_client, auth=mock_auth
+    )
+
+    # Should raise permission error, not authentication error
+    with pytest.raises(
+        EgaugePermissionError,
+        match="User 'guest' lacks permission to read device hostname. This endpoint requires view_settings privilege.",
+    ):
+        await client.get_epoch_timestamp()
+
+
+@pytest.mark.asyncio
+async def test_get_epoch_timestamp_authentication_failed():
+    """Test that 401 with invalid auth raises EgaugeAuthenticationError.
+
+    Scenario: Invalid credentials - both endpoints return 401.
+    - /config/db/epoch returns 401 (authentication failed)
+    - /auth/rights also returns 401 (credentials truly invalid)
+    - Should raise EgaugeAuthenticationError
+    """
+    # Mock client that returns 401 for both endpoints
+    mock_client = MultiResponseClient()
+    mock_client.add_get_handler("/config/db/epoch", {}, status_code=401)
+    mock_client.add_get_handler("/auth/rights", {}, status_code=401)
+    mock_auth = MockAuthManager()
+
+    client = EgaugeJsonClient(
+        "egauge12345.local", "baduser", "badpass", mock_client, auth=mock_auth
+    )
+
+    # Should raise authentication error
+    with pytest.raises(
+        EgaugeAuthenticationError, match="Authentication failed after token refresh"
+    ):
+        await client.get_epoch_timestamp()
 
 
 # Phase 6: get_user_rights() tests
