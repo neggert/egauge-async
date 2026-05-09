@@ -1,7 +1,9 @@
+# pyright: reportPrivateUsage=false
 """Tests for EgaugeJsonClient."""
 
 import pytest
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from egauge_async.json.client import EgaugeJsonClient
 from egauge_async.json.models import RegisterType
@@ -234,7 +236,7 @@ async def test_context_manager_calls_close():
 @pytest.mark.asyncio
 async def test_get_register_info_success():
     """Test successfully fetching register information."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "ts": "1678330813.000129799",
         "registers": [
             {"name": "Grid", "type": "P", "idx": 17, "did": 0},
@@ -267,7 +269,7 @@ async def test_get_register_info_success():
 @pytest.mark.asyncio
 async def test_get_register_info_caching():
     """Test that register info is cached after first fetch."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "ts": "1678330813.000",
         "registers": [{"name": "Grid", "type": "P", "idx": 17, "did": 0}],
     }
@@ -294,7 +296,7 @@ async def test_get_register_info_caching():
 @pytest.mark.asyncio
 async def test_get_register_info_uses_bearer_auth():
     """Test that get_register_info uses Bearer token authentication."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "ts": "1678330813.000",
         "registers": [{"name": "Grid", "type": "P", "idx": 17, "did": 0}],
     }
@@ -316,7 +318,7 @@ async def test_get_register_info_uses_bearer_auth():
 @pytest.mark.asyncio
 async def test_get_register_info_missing_name_field():
     """Test that missing name field raises EgaugeParsingException."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "ts": "1678330813.000",
         "registers": [{"type": "P", "idx": 17, "did": 0}],  # No name field
     }
@@ -337,7 +339,7 @@ async def test_get_register_info_missing_name_field():
 @pytest.mark.asyncio
 async def test_get_register_info_missing_type_field():
     """Test that missing type field raises EgaugeParsingException."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "ts": "1678330813.000",
         "registers": [{"name": "Grid", "idx": 17, "did": 0}],  # No type field
     }
@@ -360,7 +362,7 @@ async def test_get_register_info_missing_type_field():
 @pytest.mark.asyncio
 async def test_get_register_info_missing_idx_field():
     """Test that missing idx field raises EgaugeParsingException."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "ts": "1678330813.000",
         "registers": [{"name": "Grid", "type": "P", "did": 0}],  # No idx field
     }
@@ -384,7 +386,7 @@ async def test_get_register_info_missing_idx_field():
 @pytest.mark.asyncio
 async def test_get_current_measurements_all_registers():
     """Test fetching current measurements for all registers."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "ts": "1678330813.000",
         "registers": [
             {"name": "Grid", "type": "P", "idx": 17, "rate": 1798.5},
@@ -410,7 +412,7 @@ async def test_get_current_measurements_all_registers():
 @pytest.mark.asyncio
 async def test_get_current_measurements_uses_rate_parameter():
     """Test that current measurements request includes rate parameter."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "ts": "1678330813.000",
         "registers": [{"name": "Grid", "type": "P", "idx": 17, "rate": 1798.5}],
     }
@@ -431,7 +433,7 @@ async def test_get_current_measurements_uses_rate_parameter():
 
     # Verify the rate parameter was passed
     assert len(mock_client.calls) == 1
-    method, url, params = mock_client.calls[0]
+    method, _url, params = mock_client.calls[0]
     assert method == "GET"
     assert params is not None
     assert "rate" in params
@@ -478,7 +480,7 @@ async def test_get_current_measurements_with_register_filter():
 
     # Verify the reg parameter was passed (2 calls: one for register info, one for measurements)
     assert len(mock_client.calls) == 2
-    method, url, params = mock_client.calls[
+    method, _url, params = mock_client.calls[
         1
     ]  # Second call is the filtered measurements
     assert method == "GET"
@@ -492,7 +494,7 @@ async def test_get_current_measurements_with_register_filter():
 @pytest.mark.asyncio
 async def test_get_current_measurements_no_rate_values():
     """Test that missing rate field raises EgaugeParsingException."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "ts": "1678330813.000",
         "registers": [
             {"name": "Grid", "type": "P", "idx": 17},  # No rate field
@@ -546,7 +548,7 @@ async def test_get_current_measurements_unknown_register():
 @pytest.mark.asyncio
 async def test_get_current_measurements_missing_name_field():
     """Test that missing name field raises EgaugeParsingException."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "ts": "1678330813.000",
         "registers": [
             {"type": "P", "idx": 17, "rate": 1798.5}  # No name field
@@ -570,7 +572,7 @@ async def test_get_current_measurements_missing_name_field():
 @pytest.mark.asyncio
 async def test_get_historical_counters_basic():
     """Test fetching historical counter data with quantum conversion."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "registers": [
             {"name": "Grid", "type": "P", "idx": 17},
             {"name": "Voltage", "type": "V", "idx": 18},
@@ -621,7 +623,7 @@ async def test_get_historical_counters_basic():
 
     # Verify the time parameter was passed in start:step:end format
     assert len(mock_client.calls) == 1
-    method, url, params = mock_client.calls[0]
+    method, _url, params = mock_client.calls[0]
     assert method == "GET"
     assert params is not None
     assert "time" in params
@@ -636,7 +638,7 @@ async def test_get_historical_counters_basic():
 @pytest.mark.asyncio
 async def test_get_historical_counters_multiple_ranges():
     """Test handling response with multiple ranges (different delta values)."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "registers": [{"name": "Grid", "type": "P", "idx": 17}],
         "ranges": [
             {
@@ -726,7 +728,9 @@ async def test_get_historical_counters_with_register_filter():
 
     # Verify the reg parameter was passed (2 calls: one for register info, one for historical)
     assert len(mock_client.calls) == 2
-    method, url, params = mock_client.calls[1]  # Second call is the filtered historical
+    method, _url, params = mock_client.calls[
+        1
+    ]  # Second call is the filtered historical
     assert method == "GET"
     assert params is not None
     assert "reg" in params
@@ -743,7 +747,7 @@ async def test_get_historical_counters_with_register_filter():
 @pytest.mark.asyncio
 async def test_get_historical_counters_with_max_rows():
     """Test limiting historical data with max_rows parameter."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "registers": [{"name": "Grid", "type": "P", "idx": 17}],
         "ranges": [
             {
@@ -773,7 +777,7 @@ async def test_get_historical_counters_with_max_rows():
 
     # Verify the max-rows parameter was passed
     assert len(mock_client.calls) == 1
-    method, url, params = mock_client.calls[0]
+    method, _url, params = mock_client.calls[0]
     assert method == "GET"
     assert params is not None
     assert "max-rows" in params
@@ -825,7 +829,7 @@ async def test_get_historical_counters_unknown_register():
 @pytest.mark.asyncio
 async def test_get_historical_counters_missing_name_field():
     """Test that missing name field raises EgaugeParsingException."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "registers": [{"type": "P", "idx": 17}],  # No name field
         "ranges": [{"ts": "1678298313.000", "delta": 60, "rows": [["100"]]}],
     }
@@ -850,7 +854,7 @@ async def test_get_historical_counters_missing_name_field():
 @pytest.mark.asyncio
 async def test_get_historical_counters_missing_type_field():
     """Test that missing type field raises EgaugeParsingException."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "registers": [{"name": "Grid", "idx": 17}],  # No type field
         "ranges": [{"ts": "1678298313.000", "delta": 60, "rows": [["100"]]}],
     }
@@ -878,7 +882,7 @@ async def test_get_historical_counters_missing_type_field():
 @pytest.mark.asyncio
 async def test_get_current_counters_all_registers():
     """Test fetching current counter values for all registers."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "registers": [
             {"name": "Grid", "type": "P", "idx": 17},
             {"name": "Voltage", "type": "V", "idx": 18},
@@ -915,7 +919,7 @@ async def test_get_current_counters_all_registers():
 @pytest.mark.asyncio
 async def test_get_current_counters_uses_time_now_parameter():
     """Test that current counters request includes time=now parameter."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "registers": [{"name": "Grid", "type": "P", "idx": 17}],
         "ranges": [{"ts": "1678298313.000", "delta": 1, "rows": [["100"]]}],
     }
@@ -936,7 +940,7 @@ async def test_get_current_counters_uses_time_now_parameter():
 
     # Verify the time parameter was passed with value "now"
     assert len(mock_client.calls) == 1
-    method, url, params = mock_client.calls[0]
+    method, _url, params = mock_client.calls[0]
     assert method == "GET"
     assert params is not None
     assert "time" in params
@@ -946,7 +950,7 @@ async def test_get_current_counters_uses_time_now_parameter():
 @pytest.mark.asyncio
 async def test_get_current_counters_uses_bearer_auth():
     """Test that get_current_counters uses Bearer token authentication."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "registers": [{"name": "Grid", "type": "P", "idx": 17}],
         "ranges": [{"ts": "1678298313.000", "delta": 1, "rows": [["100"]]}],
     }
@@ -1004,7 +1008,7 @@ async def test_get_current_counters_with_register_filter():
 
     # Verify the reg parameter was passed (2 calls: one for register info, one for counters)
     assert len(mock_client.calls) == 2
-    method, url, params = mock_client.calls[1]  # Second call is the filtered counters
+    method, _url, params = mock_client.calls[1]  # Second call is the filtered counters
     assert method == "GET"
     assert params is not None
     assert "reg" in params
@@ -1045,7 +1049,7 @@ async def test_get_current_counters_unknown_register():
 @pytest.mark.asyncio
 async def test_get_current_counters_missing_name_field():
     """Test that missing name field raises EgaugeParsingException."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "registers": [{"type": "P", "idx": 17}],  # No name field
         "ranges": [{"ts": "1678298313.000", "delta": 1, "rows": [["100"]]}],
     }
@@ -1066,7 +1070,7 @@ async def test_get_current_counters_missing_name_field():
 @pytest.mark.asyncio
 async def test_get_current_counters_missing_type_field():
     """Test that missing type field raises EgaugeParsingException."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "registers": [{"name": "Grid", "idx": 17}],  # No type field
         "ranges": [{"ts": "1678298313.000", "delta": 1, "rows": [["100"]]}],
     }
@@ -1089,7 +1093,7 @@ async def test_get_current_counters_missing_type_field():
 @pytest.mark.asyncio
 async def test_get_current_counters_quantum_conversion():
     """Test that quantum conversion is applied correctly for different register types."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "registers": [
             {"name": "Grid", "type": "P", "idx": 17},  # Power: quantum=1.0
             {"name": "Voltage", "type": "V", "idx": 18},  # Voltage: quantum=0.001
@@ -1122,7 +1126,7 @@ async def test_get_current_counters_quantum_conversion():
 @pytest.mark.asyncio
 async def test_get_current_counters_missing_ranges():
     """Test that missing ranges array raises EgaugeParsingException."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "registers": [{"name": "Grid", "type": "P", "idx": 17}],
         # No ranges field
     }
@@ -1145,7 +1149,7 @@ async def test_get_current_counters_missing_ranges():
 @pytest.mark.asyncio
 async def test_get_current_counters_empty_ranges():
     """Test that empty ranges array raises EgaugeParsingException."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "registers": [{"name": "Grid", "type": "P", "idx": 17}],
         "ranges": [],  # Empty array
     }
@@ -1168,7 +1172,7 @@ async def test_get_current_counters_empty_ranges():
 @pytest.mark.asyncio
 async def test_get_current_counters_multiple_ranges():
     """Test that multiple ranges raises EgaugeParsingException."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "registers": [{"name": "Grid", "type": "P", "idx": 17}],
         "ranges": [
             {"ts": "1678298313.000", "delta": 1, "rows": [["100"]]},
@@ -1193,7 +1197,7 @@ async def test_get_current_counters_multiple_ranges():
 @pytest.mark.asyncio
 async def test_get_current_counters_missing_rows_field():
     """Test that missing rows field raises EgaugeParsingException."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "registers": [{"name": "Grid", "type": "P", "idx": 17}],
         "ranges": [
             {"ts": "1678298313.000", "delta": 1}  # No rows field
@@ -1217,7 +1221,7 @@ async def test_get_current_counters_missing_rows_field():
 @pytest.mark.asyncio
 async def test_get_current_counters_empty_rows():
     """Test that empty rows array raises EgaugeParsingException."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "registers": [{"name": "Grid", "type": "P", "idx": 17}],
         "ranges": [{"ts": "1678298313.000", "delta": 1, "rows": []}],  # Empty rows
     }
@@ -1237,7 +1241,7 @@ async def test_get_current_counters_empty_rows():
 @pytest.mark.asyncio
 async def test_get_current_counters_multiple_rows():
     """Test that multiple rows raises EgaugeParsingException."""
-    response_data = {
+    response_data: dict[str, Any] = {
         "registers": [{"name": "Grid", "type": "P", "idx": 17}],
         "ranges": [
             {
@@ -1265,7 +1269,7 @@ async def test_get_current_counters_multiple_rows():
 @pytest.mark.asyncio
 async def test_get_epoch_timestamp_success():
     """Test successfully fetching epoch timestamp."""
-    response_data = {"result": "1678298313.000", "error": None}
+    response_data: dict[str, Any] = {"result": "1678298313.000", "error": None}
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/config/db/epoch", response_data)
@@ -1283,7 +1287,10 @@ async def test_get_epoch_timestamp_success():
 @pytest.mark.asyncio
 async def test_get_epoch_timestamp_error():
     """Test fetching epoch timestamp when API returns an error."""
-    response_data = {"result": "1678298313.000", "error": "Egauge error occurred"}
+    response_data: dict[str, Any] = {
+        "result": "1678298313.000",
+        "error": "Egauge error occurred",
+    }
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/config/db/epoch", response_data)
@@ -1302,7 +1309,7 @@ async def test_get_epoch_timestamp_error():
 @pytest.mark.asyncio
 async def test_get_epoch_timestamp_missing_result_field():
     """Test that missing result field raises EgaugeParsingException."""
-    response_data = {"error": None}  # No result field
+    response_data: dict[str, Any] = {"error": None}  # No result field
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/config/db/epoch", response_data)
@@ -1322,7 +1329,7 @@ async def test_get_epoch_timestamp_missing_result_field():
 @pytest.mark.asyncio
 async def test_get_epoch_timestamp_uses_bearer_auth():
     """Test that get_epoch_timestamp uses Bearer token authentication."""
-    response_data = {"result": "1678298313.000", "error": None}
+    response_data: dict[str, Any] = {"result": "1678298313.000", "error": None}
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/config/db/epoch", response_data)
@@ -1395,7 +1402,7 @@ async def test_get_epoch_timestamp_authentication_failed():
 @pytest.mark.asyncio
 async def test_get_user_rights_success():
     """Test successfully fetching user rights."""
-    response_data = {"usr": "owner", "rights": ["save", "ctrl"]}
+    response_data: dict[str, Any] = {"usr": "owner", "rights": ["save", "ctrl"]}
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/auth/rights", response_data)
@@ -1414,7 +1421,7 @@ async def test_get_user_rights_success():
 @pytest.mark.asyncio
 async def test_get_user_rights_empty_rights():
     """Test user with no special rights."""
-    response_data = {"usr": "guest", "rights": []}
+    response_data: dict[str, Any] = {"usr": "guest", "rights": []}
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/auth/rights", response_data)
@@ -1433,7 +1440,7 @@ async def test_get_user_rights_empty_rights():
 @pytest.mark.asyncio
 async def test_get_user_rights_uses_bearer_auth():
     """Test that get_user_rights uses Bearer token authentication."""
-    response_data = {"usr": "owner", "rights": ["save"]}
+    response_data: dict[str, Any] = {"usr": "owner", "rights": ["save"]}
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/auth/rights", response_data)
@@ -1452,7 +1459,7 @@ async def test_get_user_rights_uses_bearer_auth():
 @pytest.mark.asyncio
 async def test_get_user_rights_missing_usr_field():
     """Test that missing usr field raises EgaugeParsingException."""
-    response_data = {"rights": ["save", "ctrl"]}  # No usr field
+    response_data: dict[str, Any] = {"rights": ["save", "ctrl"]}  # No usr field
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/auth/rights", response_data)
@@ -1472,7 +1479,7 @@ async def test_get_user_rights_missing_usr_field():
 @pytest.mark.asyncio
 async def test_get_user_rights_missing_rights_field():
     """Test that missing rights field raises EgaugeParsingException."""
-    response_data = {"usr": "owner"}  # No rights field
+    response_data: dict[str, Any] = {"usr": "owner"}  # No rights field
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/auth/rights", response_data)
@@ -1493,7 +1500,7 @@ async def test_get_user_rights_missing_rights_field():
 @pytest.mark.asyncio
 async def test_get_device_serial_number_success():
     """Test successfully fetching device serial number."""
-    response_data = {"result": "G10400", "error": None}
+    response_data: dict[str, Any] = {"result": "G10400", "error": None}
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/sys/sn", response_data)
@@ -1511,7 +1518,7 @@ async def test_get_device_serial_number_success():
 @pytest.mark.asyncio
 async def test_get_device_serial_number_alphanumeric():
     """Test serial number with letters and numbers."""
-    response_data = {"result": "0Y0035", "error": None}
+    response_data: dict[str, Any] = {"result": "0Y0035", "error": None}
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/sys/sn", response_data)
@@ -1529,7 +1536,7 @@ async def test_get_device_serial_number_alphanumeric():
 @pytest.mark.asyncio
 async def test_get_device_serial_number_uses_bearer_auth():
     """Test that get_device_serial_number uses Bearer token authentication."""
-    response_data = {"result": "G10400", "error": None}
+    response_data: dict[str, Any] = {"result": "G10400", "error": None}
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/sys/sn", response_data)
@@ -1548,7 +1555,7 @@ async def test_get_device_serial_number_uses_bearer_auth():
 @pytest.mark.asyncio
 async def test_get_device_serial_number_missing_result_field():
     """Test that missing result field raises EgaugeParsingException."""
-    response_data = {"error": None}  # No result field
+    response_data: dict[str, Any] = {"error": None}  # No result field
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/sys/sn", response_data)
@@ -1684,7 +1691,7 @@ async def test_disambiguate_auth_error_reraises_auth_error():
 @pytest.mark.asyncio
 async def test_get_hostname_success():
     """Test successfully fetching device hostname."""
-    response_data = {"result": "eGauge42", "error": None}
+    response_data: dict[str, Any] = {"result": "eGauge42", "error": None}
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/config/net/hostname", response_data)
@@ -1702,7 +1709,7 @@ async def test_get_hostname_success():
 @pytest.mark.asyncio
 async def test_get_hostname_with_dashes():
     """Test hostname with dashes (per API spec: ASCII letters, digits, dashes)."""
-    response_data = {"result": "eGauge-Device-123", "error": None}
+    response_data: dict[str, Any] = {"result": "eGauge-Device-123", "error": None}
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/config/net/hostname", response_data)
@@ -1720,7 +1727,7 @@ async def test_get_hostname_with_dashes():
 @pytest.mark.asyncio
 async def test_get_hostname_uses_bearer_auth():
     """Test that get_hostname uses Bearer token authentication."""
-    response_data = {"result": "eGauge42", "error": None}
+    response_data: dict[str, Any] = {"result": "eGauge42", "error": None}
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/config/net/hostname", response_data)
@@ -1739,7 +1746,7 @@ async def test_get_hostname_uses_bearer_auth():
 @pytest.mark.asyncio
 async def test_get_hostname_missing_result_field():
     """Test that missing result field raises EgaugeParsingException."""
-    response_data = {"error": None}  # No result field
+    response_data: dict[str, Any] = {"error": None}  # No result field
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/config/net/hostname", response_data)
@@ -1813,7 +1820,7 @@ async def test_get_hostname_authentication_failed():
 @pytest.mark.asyncio
 async def test_get_model_success():
     """Test successfully fetching device model name."""
-    response_data = {"result": "EG4030", "error": None}
+    response_data: dict[str, Any] = {"result": "EG4030", "error": None}
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/sys/model", response_data)
@@ -1830,9 +1837,9 @@ async def test_get_model_success():
 
 @pytest.mark.parametrize("model_name", ["EG4115", "EG3010", "egauge2"])
 @pytest.mark.asyncio
-async def test_get_model_various_models(model_name):
+async def test_get_model_various_models(model_name: str):
     """Test different model names (EG4115, EG3010, etc.)."""
-    response_data = {"result": model_name, "error": None}
+    response_data: dict[str, Any] = {"result": model_name, "error": None}
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/sys/model", response_data)
@@ -1850,7 +1857,7 @@ async def test_get_model_various_models(model_name):
 @pytest.mark.asyncio
 async def test_get_model_uses_bearer_auth():
     """Test that get_model uses Bearer token authentication."""
-    response_data = {"result": "EG4030", "error": None}
+    response_data: dict[str, Any] = {"result": "EG4030", "error": None}
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/sys/model", response_data)
@@ -1869,7 +1876,7 @@ async def test_get_model_uses_bearer_auth():
 @pytest.mark.asyncio
 async def test_get_model_missing_result_field():
     """Test that missing result field raises EgaugeParsingException."""
-    response_data = {"error": None}  # No result field
+    response_data: dict[str, Any] = {"error": None}  # No result field
 
     mock_client = MultiResponseClient()
     mock_client.add_get_handler("/sys/model", response_data)

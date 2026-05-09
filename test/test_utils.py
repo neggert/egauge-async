@@ -1,6 +1,7 @@
 import pytest
 
 from egauge_async.utils import create_query_string, is_valid_host
+from egauge_async.utils import QueryParam
 
 
 @pytest.mark.parametrize(
@@ -11,7 +12,7 @@ from egauge_async.utils import create_query_string, is_valid_host
         (["p", ("k", "v")], "?p&k=v"),
     ],
 )
-def test_create_query_string(input, expected):
+def test_create_query_string(input: list[QueryParam], expected: str) -> None:
     qs = create_query_string(input)
     assert qs == expected
 
@@ -43,6 +44,6 @@ def test_create_query_string(input, expected):
         ("a" * 254 + ".com", False, "hostname too long (>253 chars)"),
     ],
 )
-def test_is_valid_host(host, expected, reason):
+def test_is_valid_host(host: str, expected: bool, reason: str) -> None:
     """Test that is_valid_host correctly validates hostnames."""
     assert is_valid_host(host) is expected, f"Failed for {reason}: {host}"

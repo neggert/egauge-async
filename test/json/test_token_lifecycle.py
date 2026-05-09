@@ -1,10 +1,13 @@
+# pyright: reportPrivateUsage=false
 """Tests for JWT token lifecycle management (parsing, expiration, refresh, 401 handling)"""
 
 import asyncio
 import base64
 import json
 import time
+from typing import Any
 
+import httpx
 import pytest
 
 from egauge_async.exceptions import (
@@ -278,12 +281,13 @@ async def test_client_401_triggers_refresh_and_retry():
 
     register_call_count = 0
 
-    async def get_handler(url, **kwargs):
+    async def get_handler(url: str | httpx.URL, **kwargs: Any) -> MockResponse:
         """Mock handler that handles /register and auth endpoints"""
         nonlocal register_call_count
+        str_url = str(url)
 
         # Handle auth endpoints
-        if "/auth/unauthorized" in url:
+        if "/auth/unauthorized" in str_url:
             return MockResponse(
                 json_module.dumps(
                     {"rlm": "eGauge", "nnc": "nonce", "error": "Auth required"}
@@ -292,7 +296,7 @@ async def test_client_401_triggers_refresh_and_retry():
             )
 
         # Handle register endpoint
-        if "/register" in url:
+        if "/register" in str_url:
             register_call_count += 1
             if register_call_count == 1:
                 # First call: return 401
@@ -306,7 +310,7 @@ async def test_client_401_triggers_refresh_and_retry():
                 # Second call (after refresh): return success
                 return MockResponse(json_module.dumps({"registers": []}), 200)
 
-        raise ValueError(f"Unexpected URL: {url}")
+        raise ValueError(f"Unexpected URL: {str_url}")
 
     new_jwt = create_egauge_jwt(lifetime_seconds=600)
 
@@ -341,9 +345,11 @@ async def test_client_double_401_raises_error():
     from mocks import MockResponse
 
     # Create a handler that returns nonce but login fails with 401
-    async def handler_with_failed_login(url, **kwargs):
+    async def handler_with_failed_login(
+        url: str | httpx.URL, **kwargs: Any
+    ) -> MockResponse:
         """Mock handler that provides nonce but fails login"""
-        if "/auth/unauthorized" in url:
+        if "/auth/unauthorized" in str(url):
             # Return proper nonce response with 401
             return MockResponse(
                 json_module.dumps(
@@ -354,7 +360,7 @@ async def test_client_double_401_raises_error():
         # For any other request (including /register), return 401 error
         return MockResponse(json_module.dumps({"error": "Invalid credentials"}), 401)
 
-    async def failed_post_handler(url, **kwargs):
+    async def failed_post_handler(url: str | httpx.URL, **kwargs: Any) -> MockResponse:
         """Mock POST handler that always fails with 400 for invalid credentials"""
         return MockResponse(json_module.dumps({"error": "Invalid credentials"}), 400)
 

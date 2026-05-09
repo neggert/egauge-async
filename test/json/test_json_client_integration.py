@@ -1,3 +1,4 @@
+# pyright: reportPrivateUsage=false
 """Integration tests for EgaugeJsonClient against real eGauge devices.
 
 These tests require access to a real eGauge device and are designed to work with
@@ -29,6 +30,8 @@ Notes:
 import math
 import os
 import asyncio
+from collections.abc import AsyncIterator
+from typing import TypedDict
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -43,13 +46,20 @@ from egauge_async.exceptions import (
 )
 
 
+class EgaugeConfig(TypedDict):
+    host: str
+    username: str
+    password: str
+    use_ssl: bool
+
+
 # ============================================================================
 # Fixtures
 # ============================================================================
 
 
 @pytest.fixture(scope="module")
-def egauge_config():
+def egauge_config() -> EgaugeConfig:
     """Load eGauge connection details from environment variables.
 
     Returns:
@@ -69,6 +79,9 @@ def egauge_config():
             "Integration tests require EGAUGE_HOST, EGAUGE_USERNAME, and "
             "EGAUGE_PASSWORD environment variables"
         )
+    assert host is not None
+    assert username is not None
+    assert password is not None
 
     return {
         "host": host,
@@ -79,7 +92,7 @@ def egauge_config():
 
 
 @pytest_asyncio.fixture
-async def http_client():
+async def http_client() -> AsyncIterator[httpx.AsyncClient]:
     """Create HTTP client with SSL verification disabled for self-signed certs.
 
     Yields:
@@ -90,7 +103,9 @@ async def http_client():
 
 
 @pytest_asyncio.fixture
-async def real_client(egauge_config, http_client):
+async def real_client(
+    egauge_config: EgaugeConfig, http_client: httpx.AsyncClient
+) -> AsyncIterator[EgaugeJsonClient]:
     """Create EgaugeJsonClient connected to real device.
 
     Args:
@@ -117,7 +132,7 @@ async def real_client(egauge_config, http_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_auth_successful_login(real_client):
+async def test_auth_successful_login(real_client: EgaugeJsonClient):
     """Test that we can successfully authenticate and get a JWT token."""
     # Trigger authentication by making an API call
     registers = await real_client.get_register_info()
@@ -129,7 +144,7 @@ async def test_auth_successful_login(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_auth_token_caching(real_client):
+async def test_auth_token_caching(real_client: EgaugeJsonClient):
     """Test that JWT tokens are cached and reused across requests."""
     # First request - triggers authentication
     await real_client.get_register_info()
@@ -151,7 +166,9 @@ async def test_auth_token_caching(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_auth_invalid_credentials(egauge_config, http_client):
+async def test_auth_invalid_credentials(
+    egauge_config: EgaugeConfig, http_client: httpx.AsyncClient
+):
     """Test that invalid credentials result in authentication error."""
     # Create client with wrong password
     client = EgaugeJsonClient(
@@ -169,7 +186,7 @@ async def test_auth_invalid_credentials(egauge_config, http_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_auth_concurrent_requests(real_client):
+async def test_auth_concurrent_requests(real_client: EgaugeJsonClient):
     """Test that concurrent requests handle token management correctly."""
     # Make multiple concurrent requests
     tasks = [
@@ -192,7 +209,7 @@ async def test_auth_concurrent_requests(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_register_info_basic(real_client):
+async def test_register_info_basic(real_client: EgaugeJsonClient):
     """Test fetching register metadata and validate structure."""
     registers = await real_client.get_register_info()
 
@@ -215,7 +232,7 @@ async def test_register_info_basic(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_register_info_caching(real_client):
+async def test_register_info_caching(real_client: EgaugeJsonClient):
     """Test that register info is cached after first fetch."""
     # First call
     registers1 = await real_client.get_register_info()
@@ -231,11 +248,11 @@ async def test_register_info_caching(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_register_info_required_fields(real_client):
+async def test_register_info_required_fields(real_client: EgaugeJsonClient):
     """Test that all registers have required fields populated."""
     registers = await real_client.get_register_info()
 
-    for name, info in registers.items():
+    for _name, info in registers.items():
         # Name must be non-empty string
         assert isinstance(info.name, str)
         assert len(info.name) > 0
@@ -256,7 +273,7 @@ async def test_register_info_required_fields(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_current_measurements_all(real_client):
+async def test_current_measurements_all(real_client: EgaugeJsonClient):
     """Test fetching current measurements for all registers."""
     measurements = await real_client.get_current_measurements()
 
@@ -274,7 +291,7 @@ async def test_current_measurements_all(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_current_measurements_filtered(real_client):
+async def test_current_measurements_filtered(real_client: EgaugeJsonClient):
     """Test fetching measurements for specific registers only."""
     # First get all registers to pick some for filtering
     all_registers = await real_client.get_register_info()
@@ -295,7 +312,7 @@ async def test_current_measurements_filtered(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_current_measurements_multiple_filtered(real_client):
+async def test_current_measurements_multiple_filtered(real_client: EgaugeJsonClient):
     """Test fetching measurements for multiple specific registers."""
     # Get available registers
     all_registers = await real_client.get_register_info()
@@ -317,7 +334,7 @@ async def test_current_measurements_multiple_filtered(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_current_measurements_unknown_register(real_client):
+async def test_current_measurements_unknown_register(real_client: EgaugeJsonClient):
     """Test that requesting unknown register raises appropriate error."""
     # First ensure cache is populated
     await real_client.get_register_info()
@@ -331,7 +348,7 @@ async def test_current_measurements_unknown_register(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_current_measurements_data_validity(real_client):
+async def test_current_measurements_data_validity(real_client: EgaugeJsonClient):
     """Test that current measurement values are valid and reasonable."""
     measurements = await real_client.get_current_measurements()
 
@@ -346,7 +363,7 @@ async def test_current_measurements_data_validity(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_current_counters_all(real_client):
+async def test_current_counters_all(real_client: EgaugeJsonClient):
     """Test fetching current cumulative counter values for all registers."""
     counters = await real_client.get_current_counters()
 
@@ -364,7 +381,7 @@ async def test_current_counters_all(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_current_counters_filtered(real_client):
+async def test_current_counters_filtered(real_client: EgaugeJsonClient):
     """Test fetching counters for specific registers only."""
     # First get all registers to pick some for filtering
     all_registers = await real_client.get_register_info()
@@ -385,7 +402,7 @@ async def test_current_counters_filtered(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_current_counters_data_validity(real_client):
+async def test_current_counters_data_validity(real_client: EgaugeJsonClient):
     """Test that current counter values are valid and reasonable."""
     counters = await real_client.get_current_counters()
 
@@ -405,7 +422,9 @@ async def test_current_counters_data_validity(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_current_counters_vs_measurements_consistency(real_client):
+async def test_current_counters_vs_measurements_consistency(
+    real_client: EgaugeJsonClient,
+):
     """Test that counters and measurements return data for same registers."""
     counters = await real_client.get_current_counters()
     measurements = await real_client.get_current_measurements()
@@ -429,7 +448,7 @@ async def test_current_counters_vs_measurements_consistency(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_historical_basic_query(real_client):
+async def test_historical_basic_query(real_client: EgaugeJsonClient):
     """Test fetching recent historical data."""
     # Query last hour of data at 1-minute intervals
     end_time = datetime.now(timezone.utc)
@@ -464,7 +483,7 @@ async def test_historical_basic_query(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_historical_with_filters(real_client):
+async def test_historical_with_filters(real_client: EgaugeJsonClient):
     """Test fetching historical data for specific registers."""
     # Get available registers
     all_registers = await real_client.get_register_info()
@@ -497,7 +516,7 @@ async def test_historical_with_filters(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_historical_quantum_conversion(real_client):
+async def test_historical_quantum_conversion(real_client: EgaugeJsonClient):
     """Test that historical values are properly converted from quantum units."""
     # Query recent data
     end_time = datetime.now(timezone.utc)
@@ -521,7 +540,7 @@ async def test_historical_quantum_conversion(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_historical_timestamp_ordering(real_client):
+async def test_historical_timestamp_ordering(real_client: EgaugeJsonClient):
     """Test that timestamps are correctly calculated and ordered."""
     # Query recent data
     end_time = datetime.now(timezone.utc)
@@ -535,10 +554,11 @@ async def test_historical_timestamp_ordering(real_client):
     assert len(result) > 0
 
     # Extract timestamps
-    timestamps = [row["ts"] for row in result]
-
-    # All timestamps should be datetime objects
-    assert all(isinstance(ts, datetime) for ts in timestamps)
+    timestamps: list[datetime] = []
+    for row in result:
+        ts = row["ts"]
+        assert isinstance(ts, datetime)
+        timestamps.append(ts)
 
     # All timestamps should have timezone info
     assert all(ts.tzinfo is not None for ts in timestamps)
@@ -551,7 +571,7 @@ async def test_historical_timestamp_ordering(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_historical_multiple_ranges(real_client):
+async def test_historical_multiple_ranges(real_client: EgaugeJsonClient):
     """Test that multiple ranges in response are handled correctly."""
     # Query a longer time period that might span multiple ranges
     end_time = datetime.now(timezone.utc)
@@ -582,7 +602,7 @@ async def test_historical_multiple_ranges(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_error_invalid_time_range(real_client):
+async def test_error_invalid_time_range(real_client: EgaugeJsonClient):
     """Test handling of invalid time range (start > end)."""
     # This may or may not raise an error depending on eGauge firmware
     # but should at least not crash
@@ -601,7 +621,7 @@ async def test_error_invalid_time_range(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_error_historical_unknown_register(real_client):
+async def test_error_historical_unknown_register(real_client: EgaugeJsonClient):
     """Test that requesting unknown register in historical query raises error."""
     # Ensure cache is populated
     await real_client.get_register_info()
@@ -622,7 +642,7 @@ async def test_error_historical_unknown_register(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_error_token_invalidation_recovery(real_client):
+async def test_error_token_invalidation_recovery(real_client: EgaugeJsonClient):
     """Test that client recovers from token invalidation."""
     # Make initial request to establish token
     await real_client.get_register_info()
@@ -645,7 +665,7 @@ async def test_error_token_invalidation_recovery(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_consistency_register_names(real_client):
+async def test_consistency_register_names(real_client: EgaugeJsonClient):
     """Test that register names are consistent across different endpoints."""
     # Get register names from metadata
     register_info = await real_client.get_register_info()
@@ -664,7 +684,7 @@ async def test_consistency_register_names(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_consistency_historical_vs_current(real_client):
+async def test_consistency_historical_vs_current(real_client: EgaugeJsonClient):
     """Test that historical and current endpoints return same register set."""
     # Get current measurements
     current = await real_client.get_current_measurements()
@@ -689,7 +709,7 @@ async def test_consistency_historical_vs_current(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_get_epoch_timestamp(real_client):
+async def test_get_epoch_timestamp(real_client: EgaugeJsonClient):
     """Test fetching epoch timestamp."""
     epoch_timestamp = await real_client.get_epoch_timestamp()
 
@@ -706,7 +726,7 @@ async def test_get_epoch_timestamp(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_get_user_rights(real_client):
+async def test_get_user_rights(real_client: EgaugeJsonClient):
     """Test fetching authenticated user's rights/privileges."""
     user_rights = await real_client.get_user_rights()
 
@@ -725,7 +745,7 @@ async def test_get_user_rights(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_get_device_serial_number(real_client):
+async def test_get_device_serial_number(real_client: EgaugeJsonClient):
     """Test fetching device serial number."""
     serial_number = await real_client.get_device_serial_number()
 
@@ -740,7 +760,9 @@ async def test_get_device_serial_number(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_user_rights_consistent_with_username(real_client, egauge_config):
+async def test_user_rights_consistent_with_username(
+    real_client: EgaugeJsonClient, egauge_config: EgaugeConfig
+):
     """Test that user rights username matches the authenticated user."""
     user_rights = await real_client.get_user_rights()
 
@@ -750,7 +772,7 @@ async def test_user_rights_consistent_with_username(real_client, egauge_config):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_serial_number_consistent_across_calls(real_client):
+async def test_serial_number_consistent_across_calls(real_client: EgaugeJsonClient):
     """Test that serial number is consistent across multiple calls."""
     serial1 = await real_client.get_device_serial_number()
     serial2 = await real_client.get_device_serial_number()
@@ -761,7 +783,7 @@ async def test_serial_number_consistent_across_calls(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_get_hostname(real_client):
+async def test_get_hostname(real_client: EgaugeJsonClient):
     """Test fetching device hostname."""
     hostname = await real_client.get_hostname()
 
@@ -779,7 +801,7 @@ async def test_get_hostname(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_hostname_consistent_across_calls(real_client):
+async def test_hostname_consistent_across_calls(real_client: EgaugeJsonClient):
     """Test that hostname is consistent across multiple calls."""
     hostname1 = await real_client.get_hostname()
     hostname2 = await real_client.get_hostname()
@@ -790,7 +812,7 @@ async def test_hostname_consistent_across_calls(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_get_model(real_client):
+async def test_get_model(real_client: EgaugeJsonClient):
     """Test fetching device model name."""
     model = await real_client.get_model()
 
@@ -808,7 +830,7 @@ async def test_get_model(real_client):
 
 @pytest.mark.integration
 @pytest.mark.asyncio
-async def test_model_consistent_across_calls(real_client):
+async def test_model_consistent_across_calls(real_client: EgaugeJsonClient):
     """Test that model name is consistent across multiple calls."""
     model1 = await real_client.get_model()
     model2 = await real_client.get_model()

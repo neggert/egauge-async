@@ -1,10 +1,12 @@
+# pyright: reportPrivateUsage=false
 import asyncio
-from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Optional, Iterable
+from typing import Any, Iterable, Optional, cast
 from urllib.parse import urlparse
 
+import httpx
 import pytest
+from pytest_mock import MockerFixture
 
 from egauge_async.client import EgaugeClient
 from egauge_async.data_models import RegisterData, DataRow, TimeInterval
@@ -14,30 +16,29 @@ from egauge_async.utils import QueryParam
 def assert_query_params(url: str, params: Iterable[QueryParam]) -> None:
     expected_params = set(params)
 
-    test_params = set()
+    test_params: set[QueryParam] = set()
     query_string = urlparse(url).query
     param_chunks = query_string.split("&")
     for chunk in param_chunks:
         if "=" in chunk:
             kv = chunk.split("=")
             assert len(kv) == 2, f"malformed query string chunk {chunk}"
-            test_params.add(tuple(kv))
+            test_params.add((kv[0], kv[1]))
         else:
             test_params.add(chunk)
     assert test_params == expected_params
 
 
-def mock_parser(xml_data):
-    return None
+def mock_parser(xml: str) -> list[DataRow]:
+    return cast(list[DataRow], None)
 
 
-@dataclass
-class MockResponse:
-    text: str
-    status_code: int
+class MockResponse(httpx.Response):
+    def __init__(self, text: str, status_code: int):
+        super().__init__(status_code=status_code, text=text)
 
 
-class MockAsyncClient(object):
+class MockAsyncClient(httpx.AsyncClient):
     def __init__(
         self,
         url: str,
@@ -46,16 +47,17 @@ class MockAsyncClient(object):
         status_code: int = 200,
     ):
         self.parsed_url = urlparse(url)
-        self.params = params
+        self.expected_params = params
         self.response = MockResponse(response, status_code)
 
-    async def get(self, url: str) -> MockResponse:
-        parsed = urlparse(url)
+    async def get(self, url: str | httpx.URL, **kwargs: Any) -> MockResponse:
+        str_url = str(url)
+        parsed = urlparse(str_url)
         assert parsed.scheme == self.parsed_url.scheme
         assert parsed.netloc == self.parsed_url.netloc
         assert parsed.path == self.parsed_url.path
-        if self.params is not None:
-            assert_query_params(url, self.params)
+        if self.expected_params is not None:
+            assert_query_params(str_url, self.expected_params)
         return self.response
 
 
@@ -350,13 +352,13 @@ async def test_historical_data_registers():
 
 
 @pytest.mark.asyncio
-async def test_get_interval_changes(mocker):
+async def test_get_interval_changes(mocker: MockerFixture):
     t1 = datetime.fromtimestamp(1000000000)
     t2 = t1 - timedelta(days=1)
     t3 = t1 - timedelta(days=2)
 
     egauge = EgaugeClient("http://localhost")
-    f = asyncio.Future()
+    f: asyncio.Future[list[DataRow]] = asyncio.Future()
     f.set_result(
         [
             DataRow(timestamp=t1, registers={"reg": RegisterData("P", 123459)}),
@@ -364,14 +366,15 @@ async def test_get_interval_changes(mocker):
             DataRow(timestamp=t3, registers={"reg": RegisterData("P", 123456)}),
         ]
     )
-    egauge.get_historical_data = mocker.Mock(return_value=f)
+    get_historical_data = mocker.Mock(return_value=f)
+    egauge.get_historical_data = get_historical_data
     mock_dt = mocker.MagicMock(wrap=datetime)
     mock_dt.now.return_value = t1
     mocker.patch("datetime.datetime", mock_dt)
 
     result = await egauge.get_interval_changes(since=t3, interval=TimeInterval.DAY)
 
-    egauge.get_historical_data.assert_called_once_with(
+    get_historical_data.assert_called_once_with(
         start=t3, interval=TimeInterval.DAY, skip_rows=0
     )
 

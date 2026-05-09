@@ -1,3 +1,4 @@
+# pyright: reportPrivateUsage=false
 import base64
 import hashlib
 import json

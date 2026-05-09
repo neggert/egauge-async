@@ -37,7 +37,7 @@ source = "uv-dynamic-versioning"
 fallback-version = "0.0.0"
 
 [tool.pyright]
-include = ["egauge_async"]
+include = ["egauge_async", "test"]
 typeCheckingMode = "strict"
 
 [tool.pytest.ini_options]

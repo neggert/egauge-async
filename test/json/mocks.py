@@ -3,8 +3,11 @@
 import base64
 import json
 import time
-from dataclasses import dataclass
 from typing import Any
+
+import httpx
+
+from egauge_async.json.auth import JwtAuthManager
 
 
 def create_egauge_jwt(lifetime_seconds: int = 600) -> str:
@@ -31,7 +34,7 @@ def create_egauge_jwt(lifetime_seconds: int = 600) -> str:
     return f"header.{payload_encoded}.signature"
 
 
-class MockAuthManager:
+class MockAuthManager(JwtAuthManager):
     """Mock JWT authentication manager that returns a fixed token."""
 
     def __init__(self, token: str = "mock_jwt_token"):
@@ -54,23 +57,23 @@ class MockAuthManager:
         self.logout_calls += 1
 
 
-@dataclass
-class MockResponse:
+class MockResponse(httpx.Response):
     """Mock HTTP response."""
 
-    text: str
-    status_code: int
+    def __init__(self, text: str, status_code: int):
+        super().__init__(status_code=status_code, text=text)
 
-    def json(self) -> dict[str, Any]:
+    def json(self, **kwargs: Any) -> dict[str, Any]:
         return json.loads(self.text)
 
-    def raise_for_status(self) -> None:
+    def raise_for_status(self) -> httpx.Response:
         """Raise an exception for HTTP error status codes."""
         if self.status_code >= 400:
             raise Exception(f"HTTP {self.status_code}")
+        return self
 
 
-class MockAsyncClient:
+class MockAsyncClient(httpx.AsyncClient):
     """Mock HTTP client that expects specific URLs and returns canned responses."""
 
     def __init__(
@@ -81,23 +84,29 @@ class MockAsyncClient:
         self.status_code = status_code
         self.calls: list[tuple[str, str, Any]] = []
 
-    async def get(self, url: str, **kwargs: Any) -> MockResponse:
-        self.calls.append(("GET", url, None))
-        assert url == self.expected_url, f"Expected URL {self.expected_url}, got {url}"
+    async def get(self, url: str | httpx.URL, **kwargs: Any) -> MockResponse:
+        str_url = str(url)
+        self.calls.append(("GET", str_url, None))
+        assert str_url == self.expected_url, (
+            f"Expected URL {self.expected_url}, got {str_url}"
+        )
         return MockResponse(json.dumps(self.response_json), self.status_code)
 
-    async def post(self, url: str, **kwargs: Any) -> MockResponse:
+    async def post(self, url: str | httpx.URL, **kwargs: Any) -> MockResponse:
+        str_url = str(url)
         json_data = kwargs.get("json")
-        self.calls.append(("POST", url, json_data))
-        assert url == self.expected_url, f"Expected URL {self.expected_url}, got {url}"
+        self.calls.append(("POST", str_url, json_data))
+        assert str_url == self.expected_url, (
+            f"Expected URL {self.expected_url}, got {str_url}"
+        )
         return MockResponse(json.dumps(self.response_json), self.status_code)
 
 
-class MultiResponseClient:
+class MultiResponseClient(httpx.AsyncClient):
     """Mock HTTP client that returns different responses based on URL patterns."""
 
     def __init__(self):
-        self.calls: list[tuple[str, ...]] = []
+        self.calls: list[tuple[str, str, Any]] = []
         self._get_handlers: dict[str, tuple[dict[str, Any], int]] = {}
         self._post_handlers: dict[str, tuple[dict[str, Any], int]] = {}
 
@@ -113,35 +122,37 @@ class MultiResponseClient:
         """Add a handler for POST requests matching the URL pattern."""
         self._post_handlers[url_pattern] = (response_json, status_code)
 
-    async def get(self, url: str, **kwargs: Any) -> MockResponse:
+    async def get(self, url: str | httpx.URL, **kwargs: Any) -> MockResponse:
+        str_url = str(url)
         params = kwargs.get("params")
-        self.calls.append(("GET", url, params))
+        self.calls.append(("GET", str_url, params))
 
         for pattern, (response_json, status_code) in self._get_handlers.items():
-            if pattern in url:
+            if pattern in str_url:
                 return MockResponse(json.dumps(response_json), status_code)
 
-        raise ValueError(f"Unexpected GET: {url}")
+        raise ValueError(f"Unexpected GET: {str_url}")
 
-    async def post(self, url: str, **kwargs: Any) -> MockResponse:
+    async def post(self, url: str | httpx.URL, **kwargs: Any) -> MockResponse:
+        str_url = str(url)
         json_data = kwargs.get("json")
-        self.calls.append(("POST", url, json_data))
+        self.calls.append(("POST", str_url, json_data))
 
         for pattern, (response_json, status_code) in self._post_handlers.items():
-            if pattern in url:
+            if pattern in str_url:
                 return MockResponse(json.dumps(response_json), status_code)
 
-        raise ValueError(f"Unexpected POST: {url}")
+        raise ValueError(f"Unexpected POST: {str_url}")
 
 
-class NeverCalledClient:
+class NeverCalledClient(httpx.AsyncClient):
     """Mock client that raises an error if any method is called."""
 
     def __init__(self, error_message: str = "Should not be called"):
         self.error_message = error_message
 
-    async def get(self, url: str, **kwargs: Any) -> MockResponse:
+    async def get(self, url: str | httpx.URL, **kwargs: Any) -> MockResponse:
         raise AssertionError(self.error_message)
 
-    async def post(self, url: str, **kwargs: Any) -> MockResponse:
+    async def post(self, url: str | httpx.URL, **kwargs: Any) -> MockResponse:
         raise AssertionError(self.error_message)
