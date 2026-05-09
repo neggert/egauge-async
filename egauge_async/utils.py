@@ -2,10 +2,14 @@
 
 import re
 from typing import Iterable, Tuple, Union
+from warnings import deprecated
 
 QueryParam = Union[str, Tuple[str, str]]
 
 
+@deprecated(
+    "create_query_string is deprecated and will be removed in egauge-async v0.6.0."
+)
 def create_query_string(params: Iterable[QueryParam]) -> str:
     """
     Create a query string to be appended to a URL. Unlike the
@@ -31,6 +35,7 @@ def create_query_string(params: Iterable[QueryParam]) -> str:
     return query_string
 
 
+@deprecated("is_valid_host is deprecated and will be removed in egauge-async v0.6.0.")
 def is_valid_host(host: str) -> bool:
     """
     Validate that a host string is a valid DNS hostname.

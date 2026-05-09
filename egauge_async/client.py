@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Any, Iterable
 from xml.etree import ElementTree
+from warnings import deprecated
 
 import httpx
 
@@ -13,6 +14,9 @@ from egauge_async.utils import create_query_string, QueryParam
 logger = logging.getLogger(__name__)
 
 
+@deprecated(
+    "EgaugeClient is deprecated and will be removed in egauge-async v0.6.0. Use EgaugeJsonClient in egauge_async.json.client instead."
+)
 class EgaugeClient(object):
     """Provides `async` read access to an Egauge device using the [documented XML API]_
 

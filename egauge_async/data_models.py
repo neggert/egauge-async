@@ -2,8 +2,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import Dict, Optional
+from warnings import deprecated
 
 
+@deprecated("RegisterData is deprecated and will be removed in egauge-async v0.6.0.")
 @dataclass
 class RegisterData(object):
     """Data from a single register
@@ -20,6 +22,7 @@ class RegisterData(object):
     rate: Optional[float] = None
 
 
+@deprecated("DataRow is deprecated and will be removed in egauge-async v0.6.0.")
 @dataclass
 class DataRow(object):
     """A row of data from the Egauge
@@ -33,6 +36,7 @@ class DataRow(object):
     registers: Dict[str, RegisterData]
 
 
+@deprecated("TimeInterval is deprecated and will be removed in egauge-async v0.6.0.")
 class TimeInterval(Enum):
     """Time intervals supported by the Egauge API"""
 
