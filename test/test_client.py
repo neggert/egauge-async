@@ -1,4 +1,5 @@
 # pyright: reportPrivateUsage=false
+# pyright: reportDeprecated=false
 import asyncio
 from datetime import datetime, timedelta
 from typing import Any, Iterable, Optional, cast

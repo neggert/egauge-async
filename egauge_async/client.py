@@ -1,3 +1,4 @@
+# pyright: reportDeprecated=false
 import logging
 from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Any, Iterable

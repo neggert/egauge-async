@@ -1,4 +1,3 @@
-# pyright: reportDeprecated=false
 """Miscellaneous utitity functions"""
 
 import re

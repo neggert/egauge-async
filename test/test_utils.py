@@ -1,3 +1,4 @@
+# pyright: reportDeprecated=false
 import pytest
 
 from egauge_async.utils import create_query_string, is_valid_host
