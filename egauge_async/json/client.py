@@ -1,6 +1,5 @@
 from datetime import datetime as dt, timedelta, timezone
 from typing import NoReturn
-from warnings import deprecated
 
 import httpx
 
@@ -17,9 +16,6 @@ from egauge_async.exceptions import (
 )
 
 
-@deprecated(
-    "EgaugeClient is deprecated and will be removed in v0.6.0. Use EgaugeJsonClient in egauge_async.json.client instead."
-)
 class EgaugeJsonClient:
     """Async client for eGauge JSON API with JWT authentication.
 
