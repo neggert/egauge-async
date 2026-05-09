@@ -1,3 +1,4 @@
+# pyright: reportDeprecated=false
 """Miscellaneous utitity functions"""
 
 import re
@@ -35,7 +36,6 @@ def create_query_string(params: Iterable[QueryParam]) -> str:
     return query_string
 
 
-@deprecated("is_valid_host is deprecated and will be removed in egauge-async v0.6.0.")
 def is_valid_host(host: str) -> bool:
     """
     Validate that a host string is a valid DNS hostname.
