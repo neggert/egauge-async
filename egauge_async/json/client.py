@@ -159,7 +159,7 @@ class EgaugeJsonClient:
                 name=reg["name"],
                 type=RegisterType(reg["type"]),
                 idx=reg["idx"],
-                did=reg.get("did"), 
+                did=reg.get("did"),
             )
 
         self._register_cache = registers
