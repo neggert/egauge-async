@@ -15,6 +15,8 @@ from egauge_async.exceptions import (
     EgaugePermissionError,
 )
 
+_DEFAULT_REGISTER_PARAMS = {"virtual": "value"}
+
 
 class EgaugeJsonClient:
     """Async client for eGauge JSON API with JWT authentication.
@@ -134,7 +136,7 @@ class EgaugeJsonClient:
             return self._register_cache
 
         url = f"{self.base_url}/register"
-        response = await self._get_with_auth(url)
+        response = await self._get_with_auth(url, _DEFAULT_REGISTER_PARAMS)
         response.raise_for_status()
 
         data = response.json()
@@ -159,7 +161,7 @@ class EgaugeJsonClient:
                 name=reg["name"],
                 type=RegisterType(reg["type"]),
                 idx=reg["idx"],
-                did=reg.get("did"),  # None for virtual registers
+                did=reg.get("did"),
             )
 
         self._register_cache = registers
@@ -177,7 +179,7 @@ class EgaugeJsonClient:
             Dictionary mapping register name to current rate value (already in physical units)
         """
         url = f"{self.base_url}/register"
-        params: dict[str, str] = {"rate": ""}
+        params: dict[str, str] = _DEFAULT_REGISTER_PARAMS | {"rate": ""}
 
         # Filter to specific registers if requested
         if registers is not None and len(registers) > 0:
@@ -237,7 +239,7 @@ class EgaugeJsonClient:
             solar = await client.get_current_counters(["Solar"])
         """
         url = f"{self.base_url}/register"
-        params: dict[str, str] = {"time": "now"}
+        params: dict[str, str] = _DEFAULT_REGISTER_PARAMS | {"time": "now"}
 
         # Filter to specific registers if requested
         if registers is not None and len(registers) > 0:

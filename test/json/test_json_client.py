@@ -241,7 +241,7 @@ async def test_get_register_info_success():
         "registers": [
             {"name": "Grid", "type": "P", "idx": 17, "did": 0},
             {"name": "Solar", "type": "P", "idx": 18, "did": 1},
-            {"name": "Total Usage", "type": "P", "idx": 19},  # Virtual (no did)
+            {"name": "Total Usage", "type": "P", "idx": 19, "did": 12},
         ],
     }
 
@@ -263,7 +263,8 @@ async def test_get_register_info_success():
     assert registers["Grid"].did == 0
 
     assert "Total Usage" in registers
-    assert registers["Total Usage"].did is None  # Virtual register
+    assert registers["Total Usage"].did == 12
+    assert mock_client.calls[0][2] == {"virtual": "value"}
 
 
 @pytest.mark.asyncio
@@ -438,6 +439,7 @@ async def test_get_current_measurements_uses_rate_parameter():
     assert params is not None
     assert "rate" in params
     assert params["rate"] == ""
+    assert params["virtual"] == "value"
 
 
 @pytest.mark.asyncio
@@ -945,6 +947,7 @@ async def test_get_current_counters_uses_time_now_parameter():
     assert params is not None
     assert "time" in params
     assert params["time"] == "now"
+    assert params["virtual"] == "value"
 
 
 @pytest.mark.asyncio
